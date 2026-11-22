@@ -4,14 +4,32 @@ class Igor < Formula
   url "https://github.com/giosch/igor/archive/refs/tags/v0.1.0.tar.gz"
   sha256 "54c34ee9aa823c746b0ba7c5587d39f6f542613514aff6889e47134e2da7e9b1"
   license "MIT"
+  revision 1
 
   depends_on "git"
   depends_on "node@24"
 
+  resource "pi" do
+    url "https://registry.npmjs.org/@earendil-works/pi-coding-agent/-/pi-coding-agent-1.6.0.tgz"
+    sha256 "85d5de404e019e850c90ee9ac6dc6c16240da122fdce0314895608164030336b"
+  end
+
   def install
-    inreplace "src/cli/index.js", "#!/usr/bin/env node", "#!#{Formula["node@24"].opt_bin}/node"
     libexec.install %w[src docs examples scripts skills tests package.json package-lock.json README.md LICENSE]
-    bin.install_symlink libexec/"src/cli/index.js" => "igor"
+    pi = libexec/"node_modules/@earendil-works/pi-coding-agent"
+    resource("pi").stage { pi.install Dir["*"] }
+    (libexec/"bin").install_symlink pi/"dist/bundle/cli.js" => "pi"
+    (bin/"igor").write_env_script libexec/"src/cli/index.js",
+      PATH: "#{Formula["node@24"].opt_bin}:#{Formula["git"].opt_bin}:#{libexec}/bin:#{HOMEBREW_PREFIX}/opt/omlx/bin:$PATH"
+  end
+
+  def caveats
+    <<~EOS
+      To run Igor's default model on Apple Silicon, install the oMLX server and download the weights:
+        brew bundle --file="$(brew --repository giosch/igor)/Brewfile"
+        igor model download inkling-mini
+        igor start
+    EOS
   end
 
   test do

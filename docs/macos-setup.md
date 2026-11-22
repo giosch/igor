@@ -4,40 +4,42 @@ Use a native arm64 terminal on the Mac. The target is an M5 Pro with 48 GB of un
 
 ## Install Igor with Homebrew
 
-If the `brew` command is new to this machine, install [Homebrew](https://brew.sh/) first and follow its printed shell setup instructions. Run these commands once to register Igor's tap, install the CLI with Node 24 and Git, and check the offline mock backend.
+If the `brew` command is new to this machine, install Homebrew first and follow its printed shell setup instructions. A tap is a repository of installation recipes. Igor's Brewfile installs Igor, its pinned Pi harness, Node 24, Git and the upstream oMLX CLI. [Homebrew](https://brew.sh/)
 
 ```sh
 brew tap giosch/igor https://github.com/giosch/igor.git
-brew install giosch/igor/igor
-igor doctor --model mock
+brew bundle --file="$(brew --repository giosch/igor)/Brewfile"
+omlx --version
+igor model download inkling-mini
+igor doctor
+igor start
 ```
 
-Check for updates with `brew update` followed by `brew upgrade giosch/igor/igor`.
+For a smaller offline demo, use `brew install giosch/igor/igor` and `igor start --model mock`. Check for updates with `brew update` followed by `brew upgrade giosch/igor/igor`. After active jobs finish, run `igor stop` and `igor start` to use an upgraded supervisor.
 
-## Enable real coding jobs
+## If start reports a missing oMLX executable
 
-Install the pinned Pi harness and the command-line build of oMLX. Igor starts its own foreground `omlx serve` child when a job needs it. [oMLX installation](https://github.com/jundot/omlx#install)
+The executable name is `omlx`. You can add it to an existing Igor installation using the upstream tap. Igor starts its own `omlx serve` process. [oMLX installation](https://github.com/jundot/omlx#install)
 
 ```sh
-export PATH="$(brew --prefix node@24)/bin:$PATH"
-npm install -g @earendil-works/pi-coding-agent@1.6.0
 brew tap jundot/omlx https://github.com/jundot/omlx
 brew install jundot/omlx/omlx
-node -p 'process.version + " " + process.arch'
-pi --version
 omlx --version
 ```
 
-The Homebrew installation includes the examples and acceptance suite. Download the weights and run the tests from the installed directory.
+If `omlx --version` succeeds and Igor reports a different executable name, check `omlxPath` in `~/Library/Application Support/igor/config.json`. Its default is `"omlx"`. For a custom installation use the absolute path printed by `command -v omlx`. After existing jobs finish, run `igor stop` and `igor start` to reload the configuration. A first launch also requires the weights from `igor model download inkling-mini`.
+
+## Verify the installation on your hardware
+
+The Homebrew installation includes the examples and acceptance suite.
 
 ```sh
+export PATH="$(brew --prefix node@24)/bin:$PATH"
 cd "$(brew --prefix giosch/igor/igor)/libexec"
-igor model download inkling-mini
-igor doctor --model inkling-mini
 npm run test:mac
 ```
 
-For a source checkout or the unpacked npm release, run `npm install` and `npm link` from its root and use that directory in place of Homebrew's `libexec`.
+For a source checkout or unpacked npm release, install oMLX with the upstream commands above and Pi with `npm install -g @earendil-works/pi-coding-agent@1.6.0`. Run `npm install` and `npm link` from the source root, then use that directory in place of Homebrew's `libexec`.
 
 `test:mac` creates a disposable project and saves a report and reviewed patch under `~/Library/Application Support/igor/acceptance/`. It checks, in order,
 

@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { once } from 'node:events';
+import { fileURLToPath } from 'node:url';
 import { check, IgorError, saveJson, mkdir, sleep } from '../core.js';
 
 const flags = [
@@ -32,6 +33,13 @@ export async function findPi(config) {
           );
           return [npmEntry, bin];
         });
+  if (!config.piPath) {
+    const bundled = new URL(
+      '../../node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js',
+      import.meta.url
+    );
+    candidates.unshift(fileURLToPath(bundled));
+  }
   for (const candidate of candidates) {
     let entry;
     try {

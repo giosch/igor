@@ -174,10 +174,16 @@ async function readStable(entry, name, signal) {
   }
 }
 export async function inventory(
-  root,
+  inputRoot,
   limits,
   { dest, signal, priorModes = {}, source = false, readOnlySubtree = null } = {}
 ) {
+  const directory = await fs.lstat(inputRoot);
+  check(
+    directory.isDirectory() && !directory.isSymbolicLink(),
+    'Linked or invalid snapshot root: ' + inputRoot
+  );
+  const root = await fs.realpath(inputRoot);
   const omittedPaths = [],
     deleted = [],
     files = [],

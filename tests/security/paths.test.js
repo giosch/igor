@@ -33,6 +33,20 @@ test('path validation handles traversal, drives, streams and reserved names', ()
     assert(!inside('C:\\root', 'D:\\root'));
   }
 });
+test('snapshot accepts an alias above the selected directory and rejects a linked root', async t => {
+  const root = await temp(t);
+  const outer = path.join(root, 'outer');
+  const alias = path.join(root, 'alias');
+  await fs.mkdir(path.join(outer, 'project'), { recursive: true });
+  await fs.writeFile(path.join(outer, 'project', 'main.js'), 'hello');
+  await fs.symlink(outer, alias, process.platform === 'win32' ? 'junction' : 'dir');
+  const result = await inventory(path.join(alias, 'project'), defaultConfig.limits);
+  assert.deepEqual(
+    result.files.map(file => file.path),
+    ['main.js']
+  );
+  await assert.rejects(inventory(alias, defaultConfig.limits), /Linked or invalid snapshot root/);
+});
 test('snapshot rejects symlinks or Windows directory junctions and linked tracked ancestors', async t => {
   const root = await temp(t),
     code = path.join(root, 'code'),
@@ -91,4 +105,5 @@ test('Seatbelt defaults to deny, scopes the port, and sanitizes worker environme
   assert.equal(env.HOME, '/private-job');
   assert.equal(env.SSH_AUTH_SOCK, undefined);
   assert.equal(env.NODE_OPTIONS, undefined);
+  if (process.platform === 'darwin') assert.equal(env.OPENSSL_CONF, '/dev/null');
 });

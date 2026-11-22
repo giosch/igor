@@ -30,7 +30,19 @@ export async function inspectRuntime(model, config, signal) {
   const exe = omlx ? config.omlxPath : config.llamaPath;
   const timeout = AbortSignal.timeout(20000);
   const opts = { signal: signal ? AbortSignal.any([signal, timeout]) : timeout };
-  const version = await command(exe, ['--version'], opts);
+  const version = await command(exe, ['--version'], opts).catch(err => {
+    if (omlx && err.code === 'ENOENT') {
+      throw new IgorError(
+        err.message +
+          '. Install the oMLX CLI on your Mac:\n' +
+          '  brew tap jundot/omlx https://github.com/jundot/omlx\n' +
+          '  brew install jundot/omlx/omlx\n' +
+          'Then run omlx --version and retry. For a custom installation, set omlxPath in config.json to the executable.',
+        3
+      );
+    }
+    throw err;
+  });
   const versionText = (version.stdout.toString() + ' ' + version.stderr).trim();
   if (omlx) {
     const match = versionText.match(/\b(\d+)\.(\d+)\.(\d+)/);

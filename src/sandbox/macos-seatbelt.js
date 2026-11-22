@@ -72,6 +72,8 @@ export function workerEnv(p) {
     GIT_CONFIG_NOSYSTEM: '1',
     GIT_CONFIG_GLOBAL: '/dev/null',
     BASH_ENV: '/dev/null',
+    // The worker uses an HTTP loopback gateway. Homebrew's OpenSSL config lives outside its sandbox.
+    ...(process.platform === 'darwin' ? { OPENSSL_CONF: '/dev/null' } : {}),
     CI: '1',
   };
 }

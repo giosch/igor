@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fixture, invoke, until } from '../helpers.js';
 import { jobPaths } from '../../src/core.js';
 import { Store } from '../../src/jobs/store.js';
+import { initialize } from '../../src/config/index.js';
 
 test('CLI service, blocking job, export, result, clean and source immutability', async t => {
   const { root, home, code, run } = await fixture(t);
@@ -29,6 +30,23 @@ test('CLI service, blocking job, export, result, clean and source immutability',
   assert.equal((await invoke(home, ['clean'])).removed.length, 1);
   await invoke(home, ['result', result.jobId], 2);
 });
+test(
+  'Mac start and doctor show the installation commands for a missing oMLX executable',
+  {
+    skip: process.platform !== 'darwin' || process.arch !== 'arm64',
+  },
+  async t => {
+    const { root, home } = await fixture(t);
+    const { config } = await initialize(home);
+    config.omlxPath = path.join(root, 'missing-omlx');
+    await fs.writeFile(path.join(home, 'config.json'), JSON.stringify(config));
+    const start = await invoke(home, ['start', '--model', 'inkling-mini'], 3);
+    assert.match(start.error, /brew tap jundot\/omlx https:\/\/github\.com\/jundot\/omlx/);
+    assert.match(start.error, /brew install jundot\/omlx\/omlx/);
+    const doctor = await invoke(home, ['doctor', '--model', 'inkling-mini'], 3);
+    assert.equal(doctor.checks.find(entry => entry.name === 'inference runtime').detail, start.error);
+  }
+);
 test('multiple submitting processes, FIFO, queued and running cancellation, timeouts and agent failures', async t => {
   const { home, run } = await fixture(t);
   const a = await run(['--background', '--mock-delay-ms', '4000']);

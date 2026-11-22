@@ -1,0 +1,40 @@
+name: Mac model runtime
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - Brewfile
+      - Formula/igor.rb
+      - .github/workflows/omlx.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  install-runtime:
+    runs-on: macos-15
+    timeout-minutes: 60
+    env:
+      HOMEBREW_NO_AUTO_UPDATE: 1
+    steps:
+      - name: Install Igor and upstream oMLX with the published Brewfile
+        run: |
+          brew tap giosch/igor https://github.com/giosch/igor.git
+          tap_dir="$(brew --repository giosch/igor)"
+          git -C "$tap_dir" checkout --detach "$GITHUB_SHA"
+          brew bundle --file="$tap_dir/Brewfile"
+      - name: Check the real oMLX CLI, packaged Pi, and first-run model diagnostic
+        run: |
+          export IGOR_HOME="$RUNNER_TEMP/igor-first-run"
+          igor --version
+          omlx --version
+          if igor doctor --model inkling-mini --json > "$RUNNER_TEMP/doctor.json"; then exit 1; else status=$?; fi
+          cat "$RUNNER_TEMP/doctor.json"
+          test "$status" -eq 4
+          jq -e '([.checks[] | select(.ok == false) | .name] == ["cached weights"]) and any(.checks[]; .name == "pi" and .detail == "1.6.0")' "$RUNNER_TEMP/doctor.json"
+          trap 'igor stop' EXIT
+          if igor start --json > "$RUNNER_TEMP/start.json"; then exit 1; else status=$?; fi
+          test "$status" -eq 4
+          jq -e '.error | contains("igor model download inkling-mini")' "$RUNNER_TEMP/start.json"

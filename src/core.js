@@ -107,9 +107,11 @@ export function command(
     }
     proc.stdout.on('data', data => capture(out, data));
     proc.stderr.on('data', data => capture(err, data));
-    proc.on('error', error =>
-      reject(error.code === 'ENOENT' ? new IgorError('Missing executable: ' + exe, 3) : error)
-    );
+    proc.on('error', error => {
+      if (error.code === 'ENOENT') {
+        reject(Object.assign(new IgorError('Missing executable: ' + exe, 3), { code: error.code }));
+      } else reject(error);
+    });
     proc.stdin.on('error', error => {
       if (error.code !== 'EPIPE') reject(error);
     });

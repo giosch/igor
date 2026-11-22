@@ -6,6 +6,10 @@ on:
     paths:
       - Formula/igor.rb
       - .github/workflows/homebrew.yml
+      - src/**
+      - tests/**
+      - examples/**
+      - package.json
   workflow_dispatch:
 
 permissions:
@@ -23,14 +27,21 @@ jobs:
           git -C "$(brew --repository giosch/igor)" checkout --detach "$GITHUB_SHA"
           HOMEBREW_NO_AUTO_UPDATE=1 brew install giosch/igor/igor
           igor --version
+          echo "$(brew --prefix node@24)/bin" >> "$GITHUB_PATH"
+          echo "IGOR_TEST_PI=$(brew --prefix giosch/igor/igor)/libexec/bin/pi" >> "$GITHUB_ENV"
+          echo "IGOR_REQUIRE_PI=1" >> "$GITHUB_ENV"
       - name: Run the formula's installation test
         run: brew test --verbose giosch/igor/igor
+      - name: Exercise pending changes on macOS
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: |
+          cd "$(brew --repository giosch/igor)"
+          installed="$(brew --prefix giosch/igor/igor)/libexec"
+          if ! diff -qr src "$installed/src" || ! diff -qr tests "$installed/tests"; then
+            npm test
+          fi
       - name: Exercise the installed package and native Seatbelt with Pi
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: |
-          export PATH="$(brew --prefix node@24)/bin:$PATH"
-          npm install --global --prefix "$RUNNER_TEMP/igor-pi" --ignore-scripts --no-audit --no-fund @earendil-works/pi-coding-agent@1.6.0
-          export IGOR_TEST_PI="$RUNNER_TEMP/igor-pi/bin/pi"
-          export IGOR_REQUIRE_PI=1
           cd "$(brew --prefix giosch/igor/igor)/libexec"
           npm test

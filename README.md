@@ -4,15 +4,19 @@ Igor delegates bounded coding tasks to Pi on a local Apple Silicon Mac. Give it 
 
 ## Run on the M5 Pro
 
-Install Igor with Homebrew. The tap is hosted in this repository and the formula installs Node 24 and Git alongside the CLI.
+Register Igor's Homebrew tap, then install Igor and the oMLX model server using the tap's Brewfile. Igor includes the pinned Pi harness. Download the default Inkling model once (about 16.9 GB).
 
 ```sh
 brew tap giosch/igor https://github.com/giosch/igor.git
-brew install giosch/igor/igor
-igor doctor --model mock
+brew bundle --file="$(brew --repository giosch/igor)/Brewfile"
+igor model download inkling-mini
+igor doctor
+igor start
 ```
 
-For real coding jobs, install Pi 1.6.0 and oMLX, then download the pinned Inkling checkpoint. The [Mac setup and acceptance guide](docs/macos-setup.md) includes the commands, a 32k hardware test, and an optional 64k test. Examples, tests, and the Claude Code skill are included under `$(brew --prefix giosch/igor/igor)/libexec`.
+If you already installed Igor and see `Missing executable: omlx`, run `brew update` and the Brewfile command above, then download the model. After existing jobs finish, run `igor stop` once to pick up the upgraded installation before running `igor start`. To try the offline demo with a smaller install, use `brew install giosch/igor/igor` and `igor start --model mock`.
+
+Examples, tests, and the Claude Code skill are included under `$(brew --prefix giosch/igor/igor)/libexec`. The Mac setup guide includes the 32k and 64k hardware tests. [Mac setup and acceptance](docs/macos-setup.md)
 
 ## Try a job on Windows or macOS
 
