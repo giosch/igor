@@ -1,5 +1,8 @@
 import { parseArgs } from 'node:util';
 import { check, IgorError } from '../core.js';
+import pkg from '../../package.json' with { type: 'json' };
+
+export const version = pkg.version;
 
 const specs = {
   start: ['model'],
@@ -77,7 +80,7 @@ export function parse(argv) {
   if (cmd === 'export') check(values.output, 'export requires --output');
   return { cmd, values, positionals };
 }
-export const help = `Igor 0.1.0 · local coding delegation
+export const help = `Igor ${version} · local coding delegation
 
   igor doctor [--model ID]             Check dependencies and model readiness
   igor start [--model ID]              Start the supervisor and inference service
