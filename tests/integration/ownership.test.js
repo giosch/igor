@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto';
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import { repo, temp, until } from '../helpers.js';
-import { systemEnv } from '../../src/core.js';
+import { command, systemEnv } from '../../src/core.js';
 import { initialize } from '../../src/config/index.js';
 import { ManagedBackend } from '../../src/inference/backends.js';
 import { download } from '../../src/models/download.js';
@@ -87,19 +87,31 @@ test('managed oMLX and llama.cpp adapters start authenticated fixture servers, e
     });
     try {
       await backend.start();
+      if (runtime === 'omlx') {
+        const requests = await fetch(new URL('/fixture/status-requests', backend.endpoint), {
+          headers: { authorization: 'Bearer ' + backend.key },
+        });
+        assert((await requests.json()) >= 2, 'start must wait for the selected model to load');
+      }
       assert(await backend.health());
       assert.equal((await fetch(backend.endpoint + '/models')).status, 401);
       assert.equal(invocation.args[invocation.args.indexOf('--host') + 1], '127.0.0.1');
       assert.equal(invocation.options.env.HF_HUB_OFFLINE, '1');
       if (runtime === 'omlx') {
         const settings = JSON.parse(await fs.readFile(path.join(root, 'runtime', id, 'model_settings.json')));
+        assert.equal(settings.version, 2);
         assert.deepEqual(settings.models['test-weight'], {
+          is_pinned: true,
           max_context_window: 32768,
           max_tokens: 8192,
           mtp_enabled: true,
           trust_remote_code: false,
         });
         assert(invocation.args.includes('--base-path'));
+        if (process.env.IGOR_TEST_OMLX_PYTHON) {
+          const upstreamCheck = path.join(repo, 'tests', 'fixtures', 'omlx_settings.py');
+          await command(process.env.IGOR_TEST_OMLX_PYTHON, [upstreamCheck, ...invocation.args]);
+        }
       } else {
         assert(invocation.args.includes('--jinja'));
         assert(invocation.args.includes('32768'));

@@ -54,7 +54,7 @@ export async function inspectRuntime(model, config, signal) {
   }
   const help = await command(exe, omlx ? ['serve', '--help'] : ['--help'], opts);
   for (const flag of omlx
-    ? ['--model-dir', '--base-path', '--host', '--port', '--pin']
+    ? ['--model-dir', '--base-path', '--host', '--port']
     : ['--model', '--alias', '--ctx-size', '--host', '--port', '--jinja']) {
     check((help.stdout.toString() + help.stderr).includes(flag), 'Installed runtime lacks ' + flag, 4);
   }
@@ -85,12 +85,17 @@ class ApiBackend {
   async health(signal) {
     try {
       const timeout = AbortSignal.timeout(3000);
-      const res = await fetch(this.endpoint + '/models', {
+      const omlx = this.model.runtime === 'omlx';
+      const res = await fetch(this.endpoint + (omlx ? '/models/status' : '/models'), {
         redirect: 'error',
         signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
         headers: this.key ? { authorization: 'Bearer ' + this.key } : {},
       });
-      return res.ok && (await res.json()).data?.some(m => m.id === this.model.options.modelId);
+      if (!res.ok) return false;
+      const status = await res.json();
+      const id = this.model.options.modelId;
+      if (omlx) return status.models?.some(m => m.id === id && m.pinned === true && m.loaded === true);
+      return status.data?.some(m => m.id === id);
     } catch {
       return false;
     }
@@ -128,9 +133,10 @@ export class ManagedBackend extends ApiBackend {
     let args, exe;
     if (m.runtime === 'omlx') {
       await saveJson(path.join(base, 'model_settings.json'), {
-        version: 1,
+        version: 2,
         models: {
           [m.options.modelId]: {
+            is_pinned: true,
             max_context_window: this.limits.context,
             max_tokens: this.limits.output,
             mtp_enabled: m.options.mtp === true,
@@ -150,8 +156,6 @@ export class ManagedBackend extends ApiBackend {
         '127.0.0.1',
         '--port',
         String(port),
-        '--pin',
-        m.options.modelId,
       ];
     } else {
       env.LLAMA_API_KEY = this.key;

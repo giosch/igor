@@ -25,6 +25,11 @@ jobs:
           tap_dir="$(brew --repository giosch/igor)"
           git -C "$tap_dir" checkout --detach "$GITHUB_SHA"
           brew bundle --file="$tap_dir/Brewfile"
+      - name: Verify launch arguments and the on-disk model pin with upstream oMLX
+        run: |
+          export IGOR_TEST_OMLX_PYTHON="$(brew --prefix jundot/omlx/omlx)/libexec/bin/python"
+          cd "$(brew --prefix giosch/igor/igor)/libexec"
+          "$(brew --prefix node@24)/bin/node" --test --test-name-pattern="managed oMLX" tests/integration/ownership.test.js
       - name: Check the real oMLX CLI, packaged Pi, and first-run model diagnostic
         run: |
           export IGOR_HOME="$RUNNER_TEMP/igor-first-run"

@@ -31,6 +31,8 @@ If `omlx --version` succeeds and Igor reports a different executable name, check
 
 ## Verify the installation on your hardware
 
+If Igor reports `Installed runtime lacks --pin`, upgrade Igor to v0.1.2 or newer with `brew update` and `brew upgrade giosch/igor/igor`. Run `igor stop` after any active jobs finish, then `igor start` to pick up the fix. Your existing oMLX installation and model cache carry over.
+
 The Homebrew installation includes the examples and acceptance suite.
 
 ```sh

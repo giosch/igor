@@ -13,6 +13,8 @@ igor model remove my-local
 
 `add` only registers a definition. `download` resolves an optional floating revision once, fetches files at the immutable commit, resumes partial responses, and checks each file's LFS SHA-256 or Git blob SHA-1. A completed manifest and current-revision pointer are atomically published. `verify` rehashes the cached files. Startup checks the selected revision, file inventory and sizes. oMLX uses a private base directory, loopback binding, a per-start API key, pinned weights and per-model MTP/context settings. The runtime log is at `runtime/MODEL_ID/server.log`. The adapter checks the installed version and available flags before launch. [oMLX launch interface](https://github.com/jundot/omlx/blob/v0.8.2/omlx/cli.py)
 
+Igor writes the selected model's `is_pinned` setting before starting oMLX. It reports readiness when `/v1/models/status` identifies that model as pinned and loaded. [oMLX model settings](https://github.com/jundot/omlx/blob/v0.8.3/omlx/model_settings.py)
+
 | Runtime | Format | Source |
 | --- | --- | --- |
 | `mock` | `mock` | Built-in deterministic worker and tiny verifiable download |
