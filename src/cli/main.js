@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { check, integer, jobPaths, jsonFile, sleep, inside, safeId } from '../core.js';
 import { dataHome, initialize } from '../config/index.js';
-import { registry, modelFor, changeRegistry } from '../models/registry.js';
+import { registry, modelFor, changeRegistry, resolveReasoningEffort } from '../models/registry.js';
 import { verify, download } from '../models/download.js';
 import { sourceRoot, git } from '../workspace/snapshot.js';
 import { Store, terminal } from '../jobs/store.js';
@@ -181,7 +181,7 @@ export async function main({ cmd, values: v, positionals: pos }) {
             modelId,
             model,
             context: Number(v.context ?? model.context.default),
-            reasoningEffort: v['reasoning-effort'] === 'default' ? undefined : v['reasoning-effort'],
+            reasoningEffort: resolveReasoningEffort(modelId, model, v['reasoning-effort']),
             timeoutMs: Number(v['timeout-ms'] ?? ctx.config.timeoutMs),
             mockMode: v['mock-mode'] ?? 'success',
             mockDelayMs: Number(v['mock-delay-ms'] ?? 0),
@@ -290,7 +290,13 @@ export async function main({ cmd, values: v, positionals: pos }) {
           value = { removed: key };
         } else {
           const m = modelFor(reg, key);
-          if (sub === 'inspect') value = { id: key, model: m, budget: budget(m) };
+          if (sub === 'inspect')
+            value = {
+              id: key,
+              model: m,
+              budget: budget(m),
+              ...(m.runtime === 'omlx' && { reasoningEffort: resolveReasoningEffort(key, m) ?? 'default' }),
+            };
           if (sub === 'download')
             value = await download(ctx.home, key, m, {
               progress: name => process.stderr.write('Checking ' + name + '\n'),

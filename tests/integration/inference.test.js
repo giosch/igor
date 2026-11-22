@@ -8,7 +8,7 @@ import { initialize } from '../../src/config/index.js';
 import { selectFiles, fetchFile, download, verify } from '../../src/models/download.js';
 import { RuntimeManager } from '../../src/inference/backends.js';
 import { chatRequest, gateway } from '../../src/inference/gateway.js';
-import { budget } from '../../src/models/registry.js';
+import { budget, resolveReasoningEffort, validateModel } from '../../src/models/registry.js';
 import registry from '../../examples/models.json' with { type: 'json' };
 import { temp } from '../helpers.js';
 
@@ -27,6 +27,17 @@ test('reasoning effort is opt-in and only the host can choose it', () => {
   for (const effort of ['none', 'low']) {
     assert.deepEqual(chatRequest(body, model, limits, effort), { ...baseline, reasoning_effort: effort });
   }
+});
+test('default Inkling jobs use low effort with fresh and existing model registries', () => {
+  const model = structuredClone(registry.models['inkling-mini']);
+  assert.equal(resolveReasoningEffort('inkling-mini', validateModel('inkling-mini', model)), 'low');
+  delete model.generation.reasoningEffort;
+  assert.equal(resolveReasoningEffort('inkling-mini', validateModel('inkling-mini', model)), 'low');
+  assert.equal(resolveReasoningEffort('inkling-mini', model, 'none'), 'none');
+  assert.equal(resolveReasoningEffort('inkling-mini', model, 'default'), undefined);
+  assert.equal(resolveReasoningEffort('other-local', model), undefined);
+  model.generation.reasoningEffort = 'default';
+  assert.equal(resolveReasoningEffort('inkling-mini', validateModel('inkling-mini', model)), undefined);
 });
 test('gateway authenticates, restricts routes and models, strips unsafe upstream options, streams bytes', async t => {
   const m = registry.models.mock,

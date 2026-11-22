@@ -12,7 +12,7 @@
       "format": "mlx",
       "quantization": "oq4e",
       "context": { "modelMaximum": 1048576, "runtimeMaximum": 65536, "default": 32768 },
-      "generation": { "maxOutputTokens": 8192, "temperature": 0.2 },
+      "generation": { "maxOutputTokens": 8192, "temperature": 0.2, "reasoningEffort": "low" },
       "capabilities": { "tools": true, "vision": false },
       "options": { "modelId": "Inkling-2-Mini-oQ4e-mtp", "mtp": true }
     },

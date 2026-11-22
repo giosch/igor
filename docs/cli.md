@@ -30,7 +30,9 @@ igor verify JOB_ID --check 'node --test' --json
 
 ## Result contract
 
-`review` returns `result`, `diff`, and `verification`. It also returns `diffBase64` when the original patch bytes cannot be represented exactly as UTF-8. `verification.agent` is the original job's tool evidence. `verification.independent` contains the latest completed check for the current patch, or `null` if there is none. `verification.independentlyVerified` reports whether that check passed.
+Inkling jobs use low reasoning effort. Pass `--reasoning-effort default` to use the inference runtime's own default or `--reasoning-effort none` to request zero reasoning effort for a managed oMLX job.
+
+`review` returns `result`, `diff`, and `verification`. It also returns `diffBase64` when the original patch bytes cannot be represented exactly as UTF-8. `verification.agent` is the original job's tool evidence. `verification.baseline` and `verification.independent` contain the latest original and patched checks, or `null`. `verification.independentlyVerified` reports whether the patched check passed. `verification.fixVerified` reports whether the same command failed on the baseline and passed on the patch. Inspect the baseline output for the expected failure.
 
 `verify` uses a clean copy of the captured source and documentation. It starts the supplied command in the patched source directory with network access denied and the captured documentation available read-only at `../docs`. An explicit `--baseline` check skips the patch and leaves its verification receipt intact. The response includes the shell exit code as `checkExitCode` and up to the last 32,768 characters each of stdout and stderr. The temporary copy is removed after the check. A failed command makes `verify` exit with code 1. A check that runs out of time returns code 6.
 

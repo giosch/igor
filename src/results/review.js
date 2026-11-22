@@ -6,19 +6,26 @@ import { reconstruct } from '../workspace/patch.js';
 import { prepareSeatbelt } from '../sandbox/macos-seatbelt.js';
 
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
-const receiptPath = p => path.join(p.output, 'verification.json');
+const receiptPath = (p, baseline = false) =>
+  path.join(p.output, baseline ? 'verification-baseline.json' : 'verification.json');
+
+const readReceipt = file =>
+  fs.readFile(file, 'utf8').then(JSON.parse, err => {
+    if (err.code !== 'ENOENT') throw err;
+    return null;
+  });
 
 export async function reviewJob(p) {
-  const [result, patch, receipt] = await Promise.all([
+  const [result, patch, receipt, baselineReceipt] = await Promise.all([
     jsonFile(p.result),
     fs.readFile(p.patch),
-    fs.readFile(receiptPath(p), 'utf8').then(JSON.parse, err => {
-      if (err.code !== 'ENOENT') throw err;
-      return null;
-    }),
+    readReceipt(receiptPath(p)),
+    readReceipt(receiptPath(p, true)),
   ]);
   const independent =
     patch.length && result.filesChanged.length && receipt?.patchSha256 === digest(patch) ? receipt : null;
+  const baseline = baselineReceipt?.jobId === result.jobId ? baselineReceipt : null;
+  const independentlyVerified = independent?.status === 'passed';
   const diff = patch.toString('utf8');
   return {
     jobId: result.jobId,
@@ -27,8 +34,15 @@ export async function reviewJob(p) {
     ...(Buffer.from(diff).equals(patch) ? {} : { diffBase64: patch.toString('base64') }),
     verification: {
       agent: result.verification,
-      independentlyVerified: independent?.status === 'passed',
+      independentlyVerified,
+      baseline,
       independent,
+      fixVerified:
+        independentlyVerified &&
+        baseline?.status === 'failed' &&
+        baseline.command === independent.command &&
+        baseline.checkExitCode > 0 &&
+        ![126, 127].includes(baseline.checkExitCode),
     },
   };
 }
@@ -85,7 +99,7 @@ export async function verifyJob(ctx, p, command, { baseline = false } = {}) {
       durationMs: Date.now() - start,
       ...(baseline ? { baseline: true } : { patchSha256: digest(patch) }),
     };
-    if (!baseline) await saveJson(receiptPath(p), verification);
+    await saveJson(receiptPath(p, baseline), verification);
     return verification;
   } finally {
     await fs.rm(root, { recursive: true, force: true, maxRetries: 3 });

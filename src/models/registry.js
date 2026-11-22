@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { check, integer, keys, safeId, safeRelative, jsonFile, saveJson } from '../core.js';
 import { exclusive } from '../jobs/store.js';
+import defaults from '../../examples/models.json' with { type: 'json' };
 
 export function validateModel(id, m) {
   safeId(id);
@@ -31,7 +32,12 @@ export function validateModel(id, m) {
   } else check(m.source.type === m.runtime, 'Incompatible model source');
   keys(m.context, ['modelMaximum', 'runtimeMaximum', 'default'], 'context');
   for (const k of ['modelMaximum', 'runtimeMaximum', 'default']) integer(m.context[k], k);
-  keys(m.generation, ['maxOutputTokens', 'temperature'], 'generation');
+  keys(m.generation, ['maxOutputTokens', 'temperature', 'reasoningEffort'], 'generation');
+  if (m.generation.reasoningEffort !== undefined)
+    check(
+      m.runtime === 'omlx' && ['default', 'none', 'low'].includes(m.generation.reasoningEffort),
+      'Model reasoning effort requires managed oMLX and accepts default, none, or low'
+    );
   integer(m.generation.maxOutputTokens, 'maxOutputTokens');
   check(
     Number.isFinite(m.generation.temperature) &&
@@ -120,6 +126,16 @@ export function modelFor(reg, id = reg.defaultModel) {
   safeId(id);
   check(Object.hasOwn(reg.models, id), 'Unknown model: ' + id);
   return reg.models[id];
+}
+export function resolveReasoningEffort(id, model, requested) {
+  const inkling = defaults.models['inkling-mini'];
+  // Registries created before 0.1.7 lack this setting.
+  const shippedEffort =
+    id === 'inkling-mini' && model.runtime === 'omlx' && model.source.repository === inkling.source.repository
+      ? inkling.generation.reasoningEffort
+      : undefined;
+  const effort = requested ?? model.generation.reasoningEffort ?? shippedEffort;
+  return effort === 'default' ? undefined : effort;
 }
 export async function changeRegistry(home, id, model) {
   safeId(id);

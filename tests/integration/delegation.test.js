@@ -18,6 +18,8 @@ test('published Claude skill resolves its references and reviews the result, dif
   assert.deepEqual(review.result, finished);
   assert.deepEqual(review.verification.agent, finished.verification);
   assert.equal(review.verification.independent, null);
+  assert.equal(review.verification.baseline, null);
+  assert.equal(review.verification.fixVerified, false);
   assert.equal(review.verification.independentlyVerified, false);
   assert.deepEqual(review.result.filesChanged, ['igor-task.md']);
   assert(review.result.artifacts.patchComplete);
@@ -42,11 +44,9 @@ test(
     await fs.writeFile(original, 'captured');
     const job = await run(['--docs', docs]);
     await fs.writeFile(original, 'later edit');
-    const baseline = await invoke(
-      home,
-      ['verify', job.jobId, '--baseline', '--check', 'test -f igor-task.md'],
-      1
-    );
+    const check =
+      'test "$(cat marker)" = captured && test -f igor-task.md && test ! -e transient && cat ../docs/guide.txt';
+    const baseline = await invoke(home, ['verify', job.jobId, '--baseline', '--check', check], 1);
     assert.equal(baseline.baseline, true);
     assert.equal(baseline.status, 'failed');
     assert.equal((await invoke(home, ['review', job.jobId])).verification.independent, null);
@@ -58,25 +58,23 @@ test(
     assert.equal(failed.checkExitCode, 7);
     assert.match(failed.stderr, /failure/);
     assert.equal((await invoke(home, ['review', job.jobId])).verification.independent.status, 'failed');
-    const passed = await invoke(home, [
-      'verify',
-      job.jobId,
-      '--check',
-      'test "$(cat marker)" = captured && test -f igor-task.md && test ! -e transient && cat ../docs/guide.txt',
-    ]);
+    const passed = await invoke(home, ['verify', job.jobId, '--check', check]);
     assert.equal(passed.status, 'passed');
     assert.equal(passed.stdout, 'reference');
     const reviewed = await invoke(home, ['review', job.jobId]);
     assert.equal(reviewed.verification.independentlyVerified, true);
+    assert.equal(reviewed.verification.baseline.command, check);
+    assert.equal(reviewed.verification.baseline.status, 'failed');
+    assert.equal(reviewed.verification.fixVerified, true);
     assert.deepEqual(
       reviewed.verification.independent,
       Object.fromEntries(Object.entries(passed).filter(([key]) => key !== 'schemaVersion'))
     );
     await invoke(home, ['verify', job.jobId, '--baseline', '--check', 'test ! -f igor-task.md']);
-    assert.deepEqual(
-      (await invoke(home, ['review', job.jobId])).verification.independent,
-      reviewed.verification.independent
-    );
+    const mismatched = (await invoke(home, ['review', job.jobId])).verification;
+    assert.deepEqual(mismatched.independent, reviewed.verification.independent);
+    assert.equal(mismatched.baseline.status, 'passed');
+    assert.equal(mismatched.fixVerified, false);
     const empty = await run(['--mock-mode', 'error'], 4);
     assert(empty.artifacts.patchComplete);
     assert.deepEqual(empty.filesChanged, []);
