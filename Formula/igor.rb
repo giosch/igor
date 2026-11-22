@@ -1,8 +1,8 @@
 class Igor < Formula
   desc "Delegate local coding tasks and review the resulting Git patches"
   homepage "https://github.com/giosch/igor"
-  url "https://github.com/giosch/igor/archive/refs/tags/v0.1.3.tar.gz"
-  sha256 "d5ea6b72f39f80e6abc40338e30ecbc3b1baf7bfa1fe61d81b04af7bc3c67aa1"
+  url "https://github.com/giosch/igor/archive/refs/tags/v0.1.4.tar.gz"
+  sha256 "1f52034dd13c15fb37c535c66a4a353c361b789248d6dbf4b965998a567283b9"
   license "MIT"
 
   depends_on "git"
