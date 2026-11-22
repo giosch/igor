@@ -42,6 +42,14 @@ test(
     await fs.writeFile(original, 'captured');
     const job = await run(['--docs', docs]);
     await fs.writeFile(original, 'later edit');
+    const baseline = await invoke(
+      home,
+      ['verify', job.jobId, '--baseline', '--check', 'test -f igor-task.md'],
+      1
+    );
+    assert.equal(baseline.baseline, true);
+    assert.equal(baseline.status, 'failed');
+    assert.equal((await invoke(home, ['review', job.jobId])).verification.independent, null);
     const failed = await invoke(
       home,
       ['verify', job.jobId, '--check', 'echo failure >&2; touch transient; exit 7'],
@@ -64,6 +72,17 @@ test(
       reviewed.verification.independent,
       Object.fromEntries(Object.entries(passed).filter(([key]) => key !== 'schemaVersion'))
     );
+    await invoke(home, ['verify', job.jobId, '--baseline', '--check', 'test ! -f igor-task.md']);
+    assert.deepEqual(
+      (await invoke(home, ['review', job.jobId])).verification.independent,
+      reviewed.verification.independent
+    );
+    const empty = await run(['--mock-mode', 'error'], 4);
+    assert(empty.artifacts.patchComplete);
+    assert.deepEqual(empty.filesChanged, []);
+    const rejected = await invoke(home, ['verify', empty.jobId, '--check', 'exit 0'], 2);
+    assert.match(rejected.error, /empty patch/);
+    assert.equal((await invoke(home, ['review', empty.jobId])).verification.independentlyVerified, false);
     assert.equal(await fs.readFile(original, 'utf8'), 'later edit');
     await assert.rejects(fs.access(path.join(code, 'igor-task.md')), { code: 'ENOENT' });
     assert(!(await fs.readdir(home)).some(name => name.startsWith('verify-')));

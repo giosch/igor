@@ -17,7 +17,8 @@ export async function reviewJob(p) {
       return null;
     }),
   ]);
-  const independent = receipt?.patchSha256 === digest(patch) ? receipt : null;
+  const independent =
+    patch.length && result.filesChanged.length && receipt?.patchSha256 === digest(patch) ? receipt : null;
   const diff = patch.toString('utf8');
   return {
     jobId: result.jobId,
@@ -38,14 +39,18 @@ async function tail(stream) {
   return text;
 }
 
-export async function verifyJob(ctx, p, command) {
+export async function verifyJob(ctx, p, command, { baseline = false } = {}) {
   check(process.platform === 'darwin', 'Job verification requires macOS Seatbelt', 5);
   const result = await jsonFile(p.result);
   check(result.artifacts.patchComplete, 'Job has no complete patch to verify');
   const [{ baseTree }, patch] = await Promise.all([
     jsonFile(path.join(p.output, 'manifest.json')),
-    fs.readFile(p.patch),
+    baseline ? Buffer.alloc(0) : fs.readFile(p.patch),
   ]);
+  check(
+    baseline || (patch.length > 0 && result.filesChanged.length > 0),
+    'Job has an empty patch. Use --baseline to check the original snapshot.'
+  );
   const root = await fs.mkdtemp(path.join(ctx.home, 'verify-'));
   const review = Object.fromEntries(
     ['code', 'docs', 'input', 'scratch'].map(dir => [dir, path.join(root, dir)])
@@ -78,9 +83,9 @@ export async function verifyJob(ctx, p, command) {
       stderr,
       checkedAt: new Date().toISOString(),
       durationMs: Date.now() - start,
-      patchSha256: digest(patch),
+      ...(baseline ? { baseline: true } : { patchSha256: digest(patch) }),
     };
-    await saveJson(receiptPath(p), verification);
+    if (!baseline) await saveJson(receiptPath(p), verification);
     return verification;
   } finally {
     await fs.rm(root, { recursive: true, force: true, maxRetries: 3 });

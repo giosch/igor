@@ -257,7 +257,7 @@ export async function main({ cmd, values: v, positionals: pos }) {
         const p = jobPaths(ctx.home, id);
         if (cmd === 'result') value = await jsonFile(p.result);
         else if (cmd === 'review') value = await reviewJob(p);
-        else if (cmd === 'verify') value = await verifyJob(ctx, p, v.check);
+        else if (cmd === 'verify') value = await verifyJob(ctx, p, v.check, { baseline: v.baseline });
         else if (cmd === 'diff') {
           const patch = await fs.readFile(p.patch);
           if (!v.json) {

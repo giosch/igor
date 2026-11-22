@@ -58,7 +58,7 @@ After the 32k run succeeds, use `npm run test:mac -- --64k` to exercise 65,536. 
 
 ### Compare Inkling reasoning settings
 
-Use Igor 0.1.5 or later. After active jobs finish, run `igor stop` so the next job uses the upgraded supervisor. Supply the original project, prompt file, and an independent check that fails on the original fixture:
+Use Igor 0.1.6 or later. After active jobs finish, run `igor stop` so the next job uses the upgraded supervisor. Supply the original project, prompt file, and an independent check that fails on the original fixture:
 
 ```sh
 export PATH="$(brew --prefix node@24)/bin:$PATH"
@@ -67,7 +67,7 @@ node "$(brew --prefix giosch/igor/igor)/libexec/scripts/benchmark-inkling.js" \
   --check 'node --test'
 ```
 
-Add `--docs DIR` and `--context TOKENS` if the original run used them. The script runs one job each for `default`, `none`, and `low` using the same managed oMLX runtime and output budget. It checks snapshot digests and writes a report with job IDs, timings, token counts, changed files, and independent verification results. Each trial's review JSON includes its diff. `patchPass` requires both a changed file and a passing check. Because the first trial can load the model and later trials can benefit from cache state, treat the three timings as a smoke comparison.
+Add `--docs DIR` and `--context TOKENS` if the original run used them. The script runs one job each for `default`, `none`, and `low` using the same managed oMLX runtime and output budget. It checks snapshot digests and writes a report with job IDs, timings, token counts, changed files, and independent verification results. Each trial's review JSON includes its diff. `patchPass` requires a nonempty patch, a passing patched check, and a failing check on the matching original snapshot. Inspect the baseline output to confirm it failed for the expected reason. Because the first trial can load the model and later trials can benefit from cache state, treat the three timings as a smoke comparison.
 
 ### Run a coding task
 

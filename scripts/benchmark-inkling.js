@@ -41,7 +41,14 @@ async function benchmark() {
   const reportFile = path.join(runDir, 'report.json');
   const prompt = path.join(runDir, 'task.md');
   await fs.copyFile(values['prompt-file'], prompt);
-  const report = { schemaVersion: 1, model, check: values.check, comparable: true, trials: [] };
+  const report = {
+    schemaVersion: 1,
+    model,
+    check: values.check,
+    comparable: true,
+    baseline: null,
+    trials: [],
+  };
   console.error('Benchmark report: ' + reportFile);
   let reference;
 
@@ -81,12 +88,21 @@ async function benchmark() {
           .update(JSON.stringify([snapshot.code.files, snapshot.docs?.files ?? null]))
           .digest('hex')
       : null;
-    if (effort === 'default') reference = snapshotSha256;
+    if (effort === 'default') {
+      reference = snapshotSha256;
+      if (result.artifacts.patchComplete) {
+        const baseline = await igor(['verify', result.jobId, '--baseline', '--check', values.check]);
+        report.baseline = baseline.status ? baseline : { ...baseline, status: 'error' };
+      }
+    }
     report.comparable &&= Boolean(reference) && snapshotSha256 === reference;
-    const checked = result.artifacts.patchComplete
-      ? await igor(['verify', result.jobId, '--check', values.check])
-      : { status: 'skipped', detail: 'Job did not capture a complete patch' };
+    const checked =
+      result.artifacts.patchComplete && result.filesChanged.length
+        ? await igor(['verify', result.jobId, '--check', values.check])
+        : { status: 'skipped', detail: result.artifacts.patchComplete ? 'Empty patch' : 'Incomplete patch' };
     const verification = checked.status ? checked : { ...checked, status: 'error' };
+    const baselineFailed =
+      report.baseline?.status === 'failed' && ![126, 127].includes(report.baseline.checkExitCode);
     report.trials.push({
       effort,
       jobId: result.jobId,
@@ -99,7 +115,7 @@ async function benchmark() {
       runtime: result.runtime,
       runWallMs,
       filesChanged: result.filesChanged,
-      patchPass: result.filesChanged.length > 0 && verification.status === 'passed',
+      patchPass: report.comparable && baselineFailed && verification.status === 'passed',
       verification,
     });
     await saveJson(reportFile, report);

@@ -29,7 +29,7 @@ const specs = {
   wait: [],
   result: [],
   review: [],
-  verify: ['check'],
+  verify: ['check', 'baseline'],
   diff: [],
   export: ['output'],
   cancel: [],
@@ -38,7 +38,7 @@ const specs = {
   help: [],
   version: [],
 };
-const booleans = new Set(['json', 'background', 'follow', 'help', 'version']);
+const booleans = new Set(['json', 'background', 'follow', 'baseline', 'help', 'version']);
 export function parse(argv) {
   const names = new Set([...Object.values(specs).flat(), ...booleans]);
   const options = Object.fromEntries(
@@ -112,7 +112,8 @@ export const help = `Igor ${version} · local coding delegation
   igor wait JOB_ID                    Wait for the terminal result
   igor result JOB_ID                  Read the job result
   igor review JOB_ID                  Read the result, diff and verification summary
-  igor verify JOB_ID --check CMD       Test the reviewed patch in a fresh snapshot (macOS)
+  igor verify JOB_ID --check CMD [--baseline]
+                                       Check a patch or the original snapshot (macOS)
   igor diff JOB_ID                    Print the Git patch
   igor export JOB_ID --output FILE    Write a new patch file
   igor cancel JOB_ID                  Request cancellation
