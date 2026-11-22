@@ -1,0 +1,13 @@
+{
+  "runtime": "omlx",
+  "format": "mlx",
+  "quantization": "4bit",
+  "source": {
+    "type": "huggingface",
+    "repository": "tozuo/Qwen3.8-27B-pi-adapted-MLX-4bit",
+    "revision": "a88366df619a4fa6647ba48e3aaa90707fce7c11"
+  },
+  "context": { "modelMaximum": 262144, "runtimeMaximum": 32768, "default": 16384 },
+  "generation": { "maxOutputTokens": 4096, "temperature": 0.8, "reasoningEffort": "none" },
+  "capabilities": { "tools": true, "vision": false }
+}
