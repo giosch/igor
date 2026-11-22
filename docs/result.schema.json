@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Igor v1 job result",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "jobId",
+    "status",
+    "exitCode",
+    "error",
+    "model",
+    "agent",
+    "agentCompleted",
+    "agentOutcome",
+    "summary",
+    "verification",
+    "filesChanged",
+    "baseRevision",
+    "artifacts",
+    "durationMs",
+    "runtime",
+    "resources"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "jobId": { "type": "string", "pattern": "^job_[0-9a-f]{32}$" },
+    "status": { "enum": ["completed", "failed", "cancelled", "timed_out", "interrupted"] },
+    "exitCode": { "type": "integer", "minimum": 0, "maximum": 7 },
+    "error": { "type": ["string", "null"] },
+    "model": { "type": ["string", "null"] },
+    "agent": { "enum": ["pi", "mock", null] },
+    "agentCompleted": { "type": "boolean" },
+    "agentOutcome": { "enum": ["success", "failed", "unknown"] },
+    "summary": { "type": "string" },
+    "verification": {
+      "type": "object",
+      "required": ["status", "commands", "independentlyVerified"],
+      "properties": {
+        "status": { "enum": ["unverified", "tool_results"] },
+        "commands": {
+          "type": "array",
+          "items": { "type": "object", "required": ["command", "ok", "exitCode", "evidence"] }
+        },
+        "independentlyVerified": { "const": false }
+      }
+    },
+    "filesChanged": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+    "baseRevision": { "type": ["string", "null"] },
+    "artifacts": {
+      "type": "object",
+      "required": ["patch", "manifest", "patchComplete"],
+      "properties": {
+        "patch": { "const": "changes.patch" },
+        "manifest": { "const": "manifest.json" },
+        "patchComplete": { "type": "boolean" }
+      }
+    },
+    "durationMs": { "type": "integer", "minimum": 0 },
+    "runtime": { "type": ["object", "null"] },
+    "resources": { "type": ["object", "null"] }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "name": "igor-delegate",
+  "version": "0.1.0",
+  "description": "A local, supervised coding worker for Apple Silicon",
+  "type": "module",
+  "private": true,
+  "license": "MIT",
+  "engines": { "node": ">=24 <25" },
+  "bin": { "igor": "src/cli/index.js" },
+  "scripts": {
+    "test": "node --test --test-concurrency=1 \"tests/**/*.test.js\"",
+    "test:pi": "node --test tests/integration/pi-live.test.js",
+    "test:mac": "node scripts/mac-acceptance.js"
+  },
+  "files": ["src", "examples", "docs", "skills", "scripts", "tests", "README.md", "LICENSE"]
+}

@@ -1,0 +1,4 @@
+node_modules/
+.igor-dev/
+*.tgz
+.DS_Store

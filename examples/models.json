@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "defaultModel": "inkling-mini",
+  "models": {
+    "inkling-mini": {
+      "runtime": "omlx",
+      "source": {
+        "type": "huggingface",
+        "repository": "mlx-community/Inkling-2-Mini-oQ4e-mtp",
+        "revision": "3eea042751cd296b7266628a8342c1749242e1fe"
+      },
+      "format": "mlx",
+      "quantization": "oq4e",
+      "context": { "modelMaximum": 1048576, "runtimeMaximum": 65536, "default": 32768 },
+      "generation": { "maxOutputTokens": 8192, "temperature": 0.2 },
+      "capabilities": { "tools": true, "vision": false },
+      "options": { "modelId": "Inkling-2-Mini-oQ4e-mtp", "mtp": true }
+    },
+    "mock": {
+      "runtime": "mock",
+      "source": { "type": "mock" },
+      "format": "mock",
+      "quantization": "none",
+      "context": { "modelMaximum": 32768, "runtimeMaximum": 32768, "default": 8192 },
+      "generation": { "maxOutputTokens": 1024, "temperature": 0 },
+      "capabilities": { "tools": true, "vision": false },
+      "options": { "modelId": "mock" }
+    }
+  }
+}
