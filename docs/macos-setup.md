@@ -74,16 +74,21 @@ The default detached process starts on demand. For login startup and automatic r
 
 ## Claude Code acceptance
 
-From the Igor repository root, create a disposable project with the installed skill.
+Register the marketplace and install the Claude Code plugin once:
+
+```sh
+claude plugin marketplace add giosch/igor
+claude plugin install igor@igor-tools
+```
+
+From the Igor repository root or the Homebrew `libexec` directory, create a disposable project:
 
 ```sh
 review_project="$(mktemp -d)"
 cp -R examples/sample-project/. "$review_project/"
-mkdir -p "$review_project/.claude/skills"
-cp -R skills/igor-delegate "$review_project/.claude/skills/"
 cd "$review_project"
 git init -q
 claude
 ```
 
-Invoke `/igor-delegate Fix clamp.js so both bounds work. Use the inkling-mini model, preserve the existing test, and show me the reviewed patch before applying it.` Check that Claude retrieves the job ID and result, reviews the exported patch, and independently verifies it in a disposable copy. The original fixture should still fail its upper-bound assertion at the review point. Approve application in this disposable project, then run `node --test` and inspect `git diff --no-index /dev/null clamp.js` or the file itself. This step uses your signed-in Claude Code installation. [Claude Code skills](https://code.claude.com/docs/en/skills)
+Invoke `/igor:igor-delegate Fix clamp.js so both bounds work. Use the inkling-mini model, preserve the existing test, and show me the reviewed patch before applying it.` Check that Claude retrieves the job ID and result, reviews the exported patch, and independently verifies it in a disposable copy. The original fixture should still fail its upper-bound assertion at the review point. Approve application in this disposable project, then run `node --test` and inspect `git diff --no-index /dev/null clamp.js` or the file itself. This step uses your signed-in Claude Code installation. [Claude Code skills](https://code.claude.com/docs/en/skills)

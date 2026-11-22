@@ -64,7 +64,7 @@ async function waitFor(ctx, store, id) {
   }
   return jsonFile(jobPaths(ctx.home, id).result);
 }
-async function logs(ctx, store, id, follow, json) {
+async function logs(ctx, store, id, emit) {
   const file = path.join(jobPaths(ctx.home, id).logs, 'events.jsonl');
   let offset = 0,
     partial = Buffer.alloc(0);
@@ -85,8 +85,7 @@ async function logs(ctx, store, id, follow, json) {
         while ((end = partial.indexOf(10)) >= 0) {
           const e = JSON.parse(partial.subarray(0, end));
           partial = partial.subarray(end + 1);
-          if (follow)
-            console.log(json ? JSON.stringify(e) : e.at + ' ' + e.type + (e.tool ? ' ' + e.tool : ''));
+          if (emit) emit(e);
           else events.push(e);
         }
       }
@@ -95,11 +94,28 @@ async function logs(ctx, store, id, follow, json) {
     } finally {
       await handle?.close();
     }
-    if (done || !follow) break;
+    if (done || !emit) break;
     if (!active(ctx.home)) await ensureService(ctx, store);
     await sleep(150);
   } while (true);
-  return follow ? undefined : { events };
+  return emit ? undefined : { events };
+}
+function eventLine(e) {
+  const label = [e.at, e.type, e.tool, e.status ?? (e.ok === undefined ? null : e.ok ? 'ok' : 'failed')];
+  if (Number.isInteger(e.exitCode)) label.push('exit=' + e.exitCode);
+  const detail = [e.agent, e.command, e.path, e.text, e.output, e.message].filter(Boolean);
+  // Quote model and tool text so escape sequences and newlines stay inert in terminals.
+  return label
+    .filter(Boolean)
+    .concat(
+      detail.map(part =>
+        JSON.stringify(part).replace(
+          /[\x7f-\x9f]/g,
+          c => '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0')
+        )
+      )
+    )
+    .join(' ');
 }
 function human(v) {
   if (v.checks)
@@ -117,10 +133,7 @@ function human(v) {
     return Object.entries(v.models)
       .map(([id, m]) => id + '  ' + m.runtime + (id === v.defaultModel ? '  (default)' : ''))
       .join('\n');
-  if (v.events)
-    return (
-      v.events.map(e => e.at + ' ' + e.type + (e.tool ? ' ' + e.tool : '')).join('\n') || 'No events yet.'
-    );
+  if (v.events) return v.events.map(eventLine).join('\n') || 'No events yet.';
   if (v.jobId) return [v.jobId, v.status, v.summary || v.error].filter(Boolean).join('  ');
   if ('running' in v)
     return (v.running ? 'Supervisor running' : 'Supervisor stopped') + (v.model ? '  ' + v.model : '');
@@ -175,6 +188,10 @@ export async function main({ cmd, values: v, positionals: pos }) {
         );
         await ensureService(ctx, store);
         const jobId = store.submit(spec);
+        if (v.follow) {
+          console.error(eventLine({ at: new Date().toISOString(), type: 'queued', message: jobId }));
+          await logs(ctx, store, jobId, event => console.error(eventLine(event)));
+        }
         value = v.background ? { jobId, status: 'queued' } : await waitFor(ctx, store, jobId);
         break;
       }
@@ -221,7 +238,12 @@ export async function main({ cmd, values: v, positionals: pos }) {
         break;
       }
       case 'logs':
-        value = await logs(ctx, store, id, v.follow, v.json);
+        value = await logs(
+          ctx,
+          store,
+          id,
+          v.follow ? e => console.log(v.json ? JSON.stringify(e) : eventLine(e)) : null
+        );
         break;
       case 'diff':
       case 'export':

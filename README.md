@@ -29,10 +29,10 @@ npm link
 igor doctor --model mock
 igor start --model mock
 igor model list
-igor run --prompt-file ./examples/task.md --code ./examples/sample-project --model mock --json
+igor run --prompt-file ./examples/task.md --code ./examples/sample-project --model mock --follow --json
 ```
 
-Copy the returned job ID into the following commands. Export to a new file outside the submitted project.
+Use `--follow` to watch tool activity as it happens. Progress uses stderr and the final JSON result uses stdout. Copy the returned job ID into the following commands. Export to a new file outside the submitted project.
 
 ```sh
 igor list
@@ -48,7 +48,14 @@ On Windows, `npm.cmd` and `igor.cmd` also work in PowerShell environments that r
 
 ## Delegate from Claude Code
 
-Copy `skills/igor-delegate` into `.claude/skills/` in the orchestrating project, or into `~/.claude/skills/` for personal use. Invoke `/igor-delegate` with the task. The skill covers acceptance criteria, background submission, patch review, and independent testing. [Delegation skill](skills/igor-delegate/SKILL.md)
+Once `igor doctor` passes on your Mac, install the Igor plugin from this repository using Claude Code:
+
+```sh
+claude plugin marketplace add giosch/igor
+claude plugin install igor@igor-tools
+```
+
+In Claude Code, run `/igor:igor-delegate Fix the failing test and show me the patch for review.` The plugin uses the `igor` CLI on your PATH. To install the skill manually, copy `skills/igor-delegate` into `.claude/skills/` in your project or `~/.claude/skills/` for personal use, then invoke `/igor-delegate`. [Delegation skill](skills/igor-delegate/SKILL.md)
 
 ## What the tests cover
 

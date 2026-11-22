@@ -174,6 +174,8 @@ test(
       events.filter(e => e.type === 'tool_end').map(e => e.tool),
       ['read', 'write', 'bash']
     );
+    assert.match(events.find(e => e.type === 'tool_end' && e.tool === 'bash').output, /clamp/);
+    assert.match(events.filter(e => e.type === 'assistant_turn').at(-1).text, /success/);
     assert.equal((await command(process.execPath, ['--test'], { cwd: p.code })).code, 0);
   }
 );

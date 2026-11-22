@@ -2,10 +2,45 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { fixture, invoke, until } from '../helpers.js';
-import { jobPaths } from '../../src/core.js';
+import { cli, fixture, invoke, until } from '../helpers.js';
+import { command, jobPaths } from '../../src/core.js';
 import { Store } from '../../src/jobs/store.js';
 import { initialize } from '../../src/config/index.js';
+
+test('run --follow streams progress on stderr and keeps stdout as a single JSON result', async t => {
+  const { home, code } = await fixture(t);
+  const args = [
+    cli,
+    'run',
+    '--code',
+    code,
+    '--prompt',
+    'Test live logs',
+    '--model',
+    'mock',
+    '--follow',
+    '--json',
+  ];
+  await invoke(
+    home,
+    args
+      .slice(1)
+      .filter(a => a !== '--json')
+      .concat('--background'),
+    2
+  );
+  const result = await command(process.execPath, args, {
+    env: { ...process.env, IGOR_HOME: home },
+    signal: AbortSignal.timeout(15000),
+  });
+  const job = JSON.parse(result.stdout);
+  assert.equal(job.status, 'completed');
+  assert.match(result.stderr, new RegExp('queued.*' + job.jobId));
+  assert.match(result.stderr, /tool_start write "igor-task.md"/);
+  assert.match(result.stderr, /tool_end write ok/);
+  assert.match(result.stderr, /finished completed exit=0/);
+  assert.deepEqual(job, await invoke(home, ['result', job.jobId]));
+});
 
 test('CLI service, blocking job, export, result, clean and source immutability', async t => {
   const { root, home, code, run } = await fixture(t);

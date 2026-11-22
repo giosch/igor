@@ -1,0 +1,11 @@
+{
+  "name": "igor-tools",
+  "description": "Claude Code integration for the Igor local coding worker.",
+  "owner": { "name": "giosch" },
+  "plugins": [
+    {
+      "name": "igor",
+      "source": "."
+    }
+  ]
+}

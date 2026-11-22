@@ -18,6 +18,7 @@ const specs = {
     'context',
     'timeout-ms',
     'background',
+    'follow',
     'mock-mode',
     'mock-delay-ms',
   ],
@@ -72,11 +73,13 @@ export function parse(argv) {
       positionals.length >= required && positionals.length <= (cmd === 'status' ? 1 : required),
       'Unexpected or missing arguments for ' + cmd
     );
-  if (cmd === 'run')
+  if (cmd === 'run') {
     check(
       values.code && Boolean(values.prompt) !== Boolean(values['prompt-file']),
       'run requires --code and exactly one of --prompt or --prompt-file'
     );
+    check(!(values.follow && values.background), 'Use --follow or --background');
+  }
   if (cmd === 'export') check(values.output, 'export requires --output');
   return { cmd, values, positionals };
 }
@@ -86,7 +89,7 @@ export const help = `Igor ${version} · local coding delegation
   igor start [--model ID]              Start the supervisor and inference service
   igor stop                           Stop services owned by Igor
   igor run --code DIR (--prompt TEXT | --prompt-file FILE)
-           [--docs DIR] [--model ID] [--context TOKENS] [--timeout-ms MS] [--background]
+           [--docs DIR] [--model ID] [--context TOKENS] [--timeout-ms MS] [--background | --follow]
   igor list [--status STATE]           List jobs in submission order
   igor status [JOB_ID]                 Show service or job status
   igor logs JOB_ID [--follow]          Read structured job events

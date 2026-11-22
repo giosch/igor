@@ -108,13 +108,17 @@ export async function configurePi(p, env, model, limits, gate) {
     enableAnalytics: false,
   });
 }
-function report(message) {
-  const text =
+function messageText(message) {
+  return (
     message.content
       ?.filter(p => p.type === 'text')
       .map(p => p.text)
       .join('\n')
-      .trim() || '';
+      .trim() || ''
+  );
+}
+function report(message) {
+  const text = messageText(message);
   const raw = text.replace(/^```(?:json)?\s*|\s*```$/g, '');
   try {
     const body = JSON.parse(raw);
@@ -169,6 +173,12 @@ export async function runPi({ spec, p, model, limits, gate, runtime, sandbox, si
     settled = false,
     sessionId,
     turns = 0;
+  let previewRemaining = 32000;
+  const preview = message => {
+    const text = messageText(message).slice(0, Math.min(4000, previewRemaining));
+    previewRemaining -= text.length;
+    return text;
+  };
   const drain = (async () => {
     for await (const bytes of proc.stderr) await stderr(bytes);
   })();
@@ -217,17 +227,19 @@ export async function runPi({ spec, p, model, limits, gate, runtime, sandbox, si
         await event('tool_start', detail);
       } else if (msg.type === 'tool_execution_end') {
         const ok = msg.isError === false;
+        const exitCode = msg.result?.details?.exitCode ?? (ok ? 0 : null);
         if (output.has(msg.toolCallId))
           commands.push({
             command: output.get(msg.toolCallId),
             ok,
-            exitCode: msg.result?.details?.exitCode ?? (ok ? 0 : null),
+            exitCode,
             evidence: 'pi-tool-result',
           });
         await event('tool_end', {
           tool: msg.toolName,
           callId: msg.toolCallId,
           ok,
+          ...(msg.toolName === 'bash' ? { exitCode, output: preview(msg.result ?? {}) } : {}),
           durationMs: msg.durationMs ?? null,
         });
       } else if (msg.type === 'message_end' && msg.message?.role === 'assistant') {
@@ -238,6 +250,7 @@ export async function runPi({ spec, p, model, limits, gate, runtime, sandbox, si
           turn: turns,
           stopReason: last.stopReason,
           usage: last.usage ?? null,
+          text: preview(last),
         });
       } else if (msg.type === 'agent_settled') {
         check(!msg.aborted, 'Pi aborted the task', 1);

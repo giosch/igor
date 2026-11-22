@@ -8,7 +8,7 @@ Use `igor --help` for the command grammar. `--json` emits UTF-8 JSON with `schem
 | `stop` | Gracefully stops Igor-owned processes. An external endpoint continues serving. |
 | `status` | Returns `running`, supervisor `pid`, selected `model` and `dataDirectory`. |
 | `doctor [--model ID]` | Returns `ok` and named dependency, configuration, sandbox and model checks. |
-| `run` | Blocks and returns the final result. `--background` returns `jobId` immediately after the queue transaction commits. |
+| `run` | Blocks and returns the final result. `--follow` streams progress to stderr while stdout still receives the final result. `--background` returns `jobId` immediately after the queue transaction commits. |
 | `list [--status STATE]` | Returns `jobs` in submission order. |
 | `status JOB_ID` | Returns timestamps, transition history, state and eventual `jobExitCode`. |
 | `logs JOB_ID [--follow]` | Returns events, or streams them until completion. Job stderr is retained separately in the logs directory. |
@@ -27,6 +27,8 @@ igor export JOB_ID --output /tmp/review.patch
 ```
 
 ## Result contract
+
+Use `igor run --follow --code . --prompt "Fix the failing test"` to watch a job. You’ll see the job ID, phases, tool calls, assistant text when each turn finishes, and excerpts of shell output when commands finish. These excerpts are also saved in the local job log. For a background job, use `igor logs JOB_ID --follow`. Add `--json` to `run --follow` when you want to parse the final result from stdout.
 
 The package includes the [versioned result JSON Schema](result.schema.json).
 
