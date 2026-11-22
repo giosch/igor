@@ -1,7 +1,7 @@
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import { git, inventory } from './snapshot.js';
-import { check, atomic, saveJson } from '../core.js';
+import { check, atomic, mkdir, safeRelative, saveJson } from '../core.js';
 
 // Populate a private Git index from raw bytes. Source attributes, filters, hooks
 // and working-tree encodings never participate in object creation.
@@ -81,4 +81,71 @@ export async function collectPatch(p, initial, baseTree, limits, signal) {
 export async function emptyPatch(p) {
   await fs.writeFile(p.patch, '', { mode: 0o600 });
   await saveJson(path.join(p.output, 'manifest.json'), { schemaVersion: 1, changes: [], complete: false });
+}
+
+// Read the stored blobs without checkout filters, CRLF conversion, or export attributes.
+async function restoreTree(baseRepo, review, baseTree) {
+  const read = (args, options) => git(['--git-dir=' + baseRepo, ...args], { cwd: review.input, ...options });
+  const { stdout } = await read(['ls-tree', '-r', '-l', '-z', baseTree], { max: 128 * 1024 ** 2 });
+  let batch = [],
+    size = 0;
+  async function flush() {
+    if (!batch.length) return;
+    const input = batch.map(file => file.hash + '\n').join('');
+    const { stdout: blobs } = await read(['cat-file', '--batch'], { input, max: size });
+    let offset = 0;
+    for (const file of batch) {
+      const header = Buffer.from(file.hash + ' blob ' + file.bytes + '\n');
+      check(blobs.subarray(offset, offset + header.length).equals(header), 'Invalid snapshot blob');
+      offset += header.length;
+      const end = offset + file.bytes;
+      check(blobs[end] === 10, 'Truncated snapshot blob');
+      const target = path.join(review.code, file.name);
+      await mkdir(path.dirname(target));
+      await fs.writeFile(target, blobs.subarray(offset, end), {
+        mode: file.executable ? 0o700 : 0o600,
+        flag: 'wx',
+      });
+      offset = end + 1;
+    }
+    batch = [];
+    size = 0;
+  }
+  for (const entry of stdout.toString().split('\0').filter(Boolean)) {
+    const match = /^(100644|100755) blob ([a-f0-9]{40}) +([0-9]+)\t([\s\S]+)$/.exec(entry);
+    check(match, 'Invalid snapshot tree entry');
+    const [, mode, hash, length, name] = match;
+    const bytes = Number(length);
+    check(Number.isSafeInteger(bytes) && bytes <= 512 * 1024 ** 2, 'Invalid snapshot blob size');
+    if (size + bytes + 80 > 8 * 1024 ** 2) await flush();
+    batch.push({ hash, bytes, name: safeRelative(name), executable: mode === '100755' });
+    size += bytes + 80;
+  }
+  await flush();
+}
+
+export async function reconstruct(p, review, baseTree, patch) {
+  check(typeof baseTree === 'string' && /^[a-f0-9]{40}$/.test(baseTree), 'Missing snapshot baseline');
+  const baseRepo = path.join(p.input, 'baseline.git');
+  const reviewRepo = path.join(review.input, 'apply.git');
+  await restoreTree(baseRepo, review, baseTree);
+  await git(['init', '--bare', '--template=', reviewRepo], { cwd: review.input });
+  const apply = async (input, ...flags) => {
+    if (input.length) {
+      await git(
+        [
+          '--git-dir=' + reviewRepo,
+          '--work-tree=' + review.code,
+          'apply',
+          '--whitespace=nowarn',
+          ...flags,
+          '-',
+        ],
+        { input, cwd: review.code }
+      );
+    }
+  };
+  await apply(patch, '--check');
+  await apply(patch);
+  await fs.cp(p.docs, review.docs, { recursive: true });
 }

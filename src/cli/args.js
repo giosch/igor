@@ -27,6 +27,8 @@ const specs = {
   logs: ['follow'],
   wait: [],
   result: [],
+  review: [],
+  verify: ['check'],
   diff: [],
   export: ['output'],
   cancel: [],
@@ -59,7 +61,9 @@ export function parse(argv) {
     seen.add(t.name);
     check(t.name === 'json' || specs[cmd].includes(t.name), 'Invalid option for ' + cmd + ': --' + t.name);
   }
-  const required = ['result', 'diff', 'export', 'logs', 'wait', 'cancel'].includes(cmd) ? 1 : 0;
+  const required = ['result', 'review', 'verify', 'diff', 'export', 'logs', 'wait', 'cancel'].includes(cmd)
+    ? 1
+    : 0;
   if (cmd === 'model') {
     const [sub] = positionals;
     check(['list', 'inspect', 'add', 'download', 'verify', 'remove'].includes(sub), 'Unknown model command');
@@ -81,6 +85,11 @@ export function parse(argv) {
     check(!(values.follow && values.background), 'Use --follow or --background');
   }
   if (cmd === 'export') check(values.output, 'export requires --output');
+  if (cmd === 'verify')
+    check(
+      values.check?.trim() && Buffer.byteLength(values.check) <= 16384 && !values.check.includes('\0'),
+      'verify requires --check with a shell command up to 16384 bytes'
+    );
   return { cmd, values, positionals };
 }
 export const help = `Igor ${version} · local coding delegation
@@ -95,6 +104,8 @@ export const help = `Igor ${version} · local coding delegation
   igor logs JOB_ID [--follow]          Read structured job events
   igor wait JOB_ID                    Wait for the terminal result
   igor result JOB_ID                  Read the job result
+  igor review JOB_ID                  Read the result, diff and verification summary
+  igor verify JOB_ID --check CMD       Test the reviewed patch in a fresh snapshot (macOS)
   igor diff JOB_ID                    Print the Git patch
   igor export JOB_ID --output FILE    Write a new patch file
   igor cancel JOB_ID                  Request cancellation

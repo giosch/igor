@@ -7,8 +7,8 @@ import { ownedProcess } from '../supervisor/process.js';
 
 const executable = '/usr/bin/sandbox-exec';
 const quote = value => JSON.stringify(value);
-export function profile({ code, docs, scratch, readable, node, port }) {
-  check(Number.isInteger(port) && port > 0 && port <= 65535, 'Invalid gateway port', 5);
+export function profile({ code, docs, scratch, readable, node, port = null }) {
+  check(port === null || (Number.isInteger(port) && port > 0 && port <= 65535), 'Invalid gateway port', 5);
   const roots = [
     ...new Set([
       '/System/Library',
@@ -54,7 +54,7 @@ export function profile({ code, docs, scratch, readable, node, port }) {
       ') (subpath ' +
       quote(scratch) +
       '))',
-    '(allow network-outbound (remote ip "localhost:' + port + '"))',
+    ...(port === null ? [] : ['(allow network-outbound (remote ip "localhost:' + port + '"))']),
     '',
   ].join('\n');
 }
@@ -90,7 +90,7 @@ export async function basicSeatbelt() {
   }
 }
 // Run a trusted probe with the exact job profile before allowing Pi to start.
-// The second listener is deliberately reachable from the host so its denial is meaningful.
+// The probe listener is deliberately reachable from the host so its denial is meaningful.
 export async function prepareSeatbelt(p, runtime, gate, signal) {
   await basicSeatbelt();
   const env = workerEnv(p);
@@ -103,7 +103,7 @@ export async function prepareSeatbelt(p, runtime, gate, signal) {
     scratch: await fs.realpath(p.scratch),
   };
   const node = await fs.realpath(process.execPath);
-  const policy = profile({ ...dirs, node, readable: runtime.readable, port: gate.port });
+  const policy = profile({ ...dirs, node, readable: runtime.readable, port: gate?.port });
   const policyFile = path.join(p.input, 'seatbelt.sb');
   await fs.writeFile(policyFile, policy, { mode: 0o600 });
   const sentinel = path.join(p.input, 'private-' + nonce);
@@ -130,7 +130,7 @@ export async function prepareSeatbelt(p, runtime, gate, signal) {
         if((fs.statSync(process.env.TMPDIR+'/private').mode&0o077)!==0)throw Error('scratch mode');
         const child=spawnSync('/bin/cat',[privateFile]);if(child.status===0||child.status===null)throw Error('subprocess boundary');
         if(Object.keys(process.env).some(k=>/TOKEN|PASSWORD|SECRET|API_KEY|SSH_AUTH_SOCK/.test(k)))throw Error('inherited credential');
-        await connect(allowed);for(const [port,host] of [[denied,'127.0.0.1'],[80,'192.0.2.1']]){
+        if(allowed)await connect(allowed);for(const [port,host] of [[denied,'127.0.0.1'],[80,'192.0.2.1']]){
           try{await connect(port,host)}catch(e){if(['EPERM','EACCES'].includes(e.code))continue;throw e}throw Error('unrestricted network')}
       })().catch(e=>{console.error(e);process.exitCode=1})`;
     await command(
@@ -145,7 +145,7 @@ export async function prepareSeatbelt(p, runtime, gate, signal) {
         doc,
         sentinel,
         link,
-        String(gate.port),
+        gate ? String(gate.port) : '',
         String(listener.address().port),
       ],
       {

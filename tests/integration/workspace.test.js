@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { git, snapshot, inventory } from '../../src/workspace/snapshot.js';
-import { baseline, collectPatch } from '../../src/workspace/patch.js';
+import { baseline, collectPatch, reconstruct } from '../../src/workspace/patch.js';
 import { defaultConfig } from '../../src/config/index.js';
 import { jobPaths } from '../../src/core.js';
 import { prepareJobDirs } from '../../src/supervisor/job.js';
@@ -44,6 +44,7 @@ test('patch round-trips dirty tracked, untracked, binary, rename, delete, CRLF a
   await write('blob.bin', Buffer.from([0, 1, 2, 3]));
   await write('already-gone', 'missing');
   await write('.gitignore', 'ignored*\n');
+  await write('.gitattributes', 'edit.txt text eol=lf\n');
   await write('script', '#!/bin/sh\n');
   await g(['add', '.']);
   await g(['update-index', '--chmod=+x', 'script']);
@@ -84,6 +85,17 @@ test('patch round-trips dirty tracked, untracked, binary, rename, delete, CRLF a
   assert.deepEqual(await fs.readFile(path.join(clone, 'blob.bin')), Buffer.from([0, 9, 8]));
   assert.equal(await fs.readFile(path.join(code, 'edit.txt'), 'utf8'), 'user edit\r\n');
   assert.equal(await fs.readFile(path.join(code, 'gone.txt'), 'utf8'), 'remove\n');
+  const review = jobPaths(root, 'job_' + 'd'.repeat(32));
+  await prepareJobDirs(review);
+  await fs.writeFile(path.join(code, 'untracked.js'), 'later user edit\n');
+  await fs.writeFile(path.join(p.code, 'untracked.js'), 'later worker edit\n');
+  await reconstruct(p, review, tree, patch);
+  assert.equal(await fs.readFile(path.join(review.code, 'edit.txt'), 'utf8'), 'worker edit\r\n');
+  assert.equal(await fs.readFile(path.join(review.code, 'untracked.js'), 'utf8'), 'const local = 1;\n');
+  assert.deepEqual(await fs.readFile(path.join(review.code, 'blob.bin')), Buffer.from([0, 9, 8]));
+  assert.equal(await fs.readFile(path.join(review.docs, 'guide.md'), 'utf8'), 'guide');
+  assert.equal(await fs.readFile(path.join(review.code, 'moved.txt'), 'utf8'), 'unchanged\n');
+  await assert.rejects(fs.access(path.join(review.code, 'gone.txt')), { code: 'ENOENT' });
   await assert.rejects(
     inventory(code, { ...defaultConfig.limits, fileBytes: 2 }, { source: true }),
     /limit exceeded/

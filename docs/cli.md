@@ -13,6 +13,8 @@ Use `igor --help` for the command grammar. `--json` emits UTF-8 JSON with `schem
 | `status JOB_ID` | Returns timestamps, transition history, state and eventual `jobExitCode`. |
 | `logs JOB_ID [--follow]` | Returns events, or streams them until completion. Job stderr is retained separately in the logs directory. |
 | `wait JOB_ID`, `result JOB_ID` | Return the result and its exit code. `result` requires a terminal job. |
+| `review JOB_ID --json` | Returns the original result, diff, Pi tool evidence and latest independent verification in one response. Retrieving a failed job's artifacts succeeds. |
+| `verify JOB_ID --check CMD --json` | On macOS, applies the patch to a fresh copy of the original snapshot and runs the supplied shell command under Seatbelt. |
 | `diff JOB_ID`, `export JOB_ID --output FILE` | Display or save the patch. Choose a fresh export path outside the original inputs and Igor's private data directory. |
 | `cancel JOB_ID` | Records a cancellation request durably. Inspect the final status with `wait`. |
 | `clean [--older-than-days N]` | Deletes terminal job records and artifacts meeting the age threshold. The default threshold is zero days. |
@@ -22,11 +24,15 @@ Use `igor --help` for the command grammar. `--json` emits UTF-8 JSON with `schem
 ```sh
 igor run --code ./project --docs ./design --prompt-file ./task.md --background --json
 igor wait JOB_ID --json
-igor logs JOB_ID --json
-igor export JOB_ID --output /tmp/review.patch
+igor review JOB_ID --json
+igor verify JOB_ID --check 'node --test' --json
 ```
 
 ## Result contract
+
+`review` returns `result`, `diff`, and `verification`. It also returns `diffBase64` when the original patch bytes cannot be represented exactly as UTF-8. `verification.agent` is the original job's tool evidence. `verification.independent` contains the latest completed check for the current patch, or `null` if there is none. `verification.independentlyVerified` reports whether that check passed.
+
+`verify` uses a clean copy of the captured source and documentation. It starts the supplied command in the patched source directory with network access denied and the captured documentation available read-only at `../docs`. The response includes the shell exit code as `checkExitCode` and up to the last 32,768 characters each of stdout and stderr. The temporary copy is removed after the check. A failed command makes `verify` exit with code 1. A check that runs out of time returns code 6.
 
 Use `igor run --follow --code . --prompt "Fix the failing test"` to watch a job. You’ll see the job ID, phases, tool calls, assistant text when each turn finishes, and excerpts of shell output when commands finish. These excerpts are also saved in the local job log. For a background job, use `igor logs JOB_ID --follow`. Add `--json` to `run --follow` when you want to parse the final result from stdout.
 

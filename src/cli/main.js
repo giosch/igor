@@ -12,6 +12,7 @@ import { inspectRuntime, RuntimeManager } from '../inference/backends.js';
 import { findPi } from '../agents/pi.js';
 import { basicSeatbelt } from '../sandbox/macos-seatbelt.js';
 import { budget } from '../models/registry.js';
+import { reviewJob, verifyJob } from '../results/review.js';
 
 async function doctor(ctx, id, model) {
   const checks = [];
@@ -247,11 +248,15 @@ export async function main({ cmd, values: v, positionals: pos }) {
         break;
       case 'diff':
       case 'export':
+      case 'review':
+      case 'verify':
       case 'result': {
         const row = store.row(id);
         check(terminal.includes(row.status), 'Job has not finished');
         const p = jobPaths(ctx.home, id);
         if (cmd === 'result') value = await jsonFile(p.result);
+        else if (cmd === 'review') value = await reviewJob(p);
+        else if (cmd === 'verify') value = await verifyJob(ctx, p, v.check);
         else if (cmd === 'diff') {
           const patch = await fs.readFile(p.patch);
           if (!v.json) {
@@ -325,7 +330,10 @@ export async function main({ cmd, values: v, positionals: pos }) {
     }
     if (value !== undefined) {
       process.exitCode = value.exitCode ?? 0;
-      const output = v.json ? JSON.stringify({ schemaVersion: 1, ...value }) : human(value);
+      const output =
+        v.json || cmd === 'review' || cmd === 'verify'
+          ? JSON.stringify({ schemaVersion: 1, ...value }, null, v.json ? undefined : 2)
+          : human(value);
       console.log(output);
     }
   } finally {
