@@ -19,7 +19,10 @@ class Igor < Formula
     (testpath/"project").mkpath
     (testpath/"project/input.txt").write "Hello from Homebrew\n"
     assert_equal version.to_s, shell_output("#{bin}/igor --version").strip
-    job = JSON.parse(shell_output("#{bin}/igor run --model mock --code project --prompt hello --json"))
+    system bin/"igor", "run", "--model", "mock", "--code", "project", "--prompt", "hello", "--json"
+    jobs = JSON.parse(shell_output("#{bin}/igor list --json")).fetch("jobs")
+    assert_equal 1, jobs.length
+    job = JSON.parse(shell_output("#{bin}/igor result #{jobs.first.fetch("jobId")} --json"))
     assert_equal "completed", job.fetch("status")
     assert_equal ["igor-task.md"], job.fetch("filesChanged")
     assert_match "diff --git a/igor-task.md b/igor-task.md", shell_output("#{bin}/igor diff #{job.fetch("jobId")}")

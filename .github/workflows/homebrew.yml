@@ -17,13 +17,16 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Install the published formula
+        id: install
         run: |
           brew tap giosch/igor https://github.com/giosch/igor.git
           git -C "$(brew --repository giosch/igor)" checkout --detach "$GITHUB_SHA"
           HOMEBREW_NO_AUTO_UPDATE=1 brew install giosch/igor/igor
           igor --version
-          brew test giosch/igor/igor
+      - name: Run the formula's installation test
+        run: brew test --verbose giosch/igor/igor
       - name: Exercise the installed package and native Seatbelt with Pi
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: |
           export PATH="$(brew --prefix node@24)/bin:$PATH"
           npm install --global --prefix "$RUNNER_TEMP/igor-pi" --ignore-scripts --no-audit --no-fund @earendil-works/pi-coding-agent@1.6.0
