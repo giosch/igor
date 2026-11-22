@@ -4,17 +4,15 @@ Igor delegates bounded coding tasks to Pi on a local Apple Silicon Mac. Give it 
 
 ## Run on the M5 Pro
 
-Follow the [Mac setup and acceptance guide](docs/macos-setup.md) for Node 24, Pi 1.6.0, oMLX, and the pinned Inkling checkpoint. Igor itself is executable JavaScript with zero npm runtime dependencies. A checkout or unpacked release contains the CLI, tests, examples, and Claude Code skill.
+Install Igor with Homebrew. The tap is hosted in this repository and the formula installs Node 24 and Git alongside the CLI.
 
 ```sh
-npm install
-npm link
-igor model download inkling-mini
-igor doctor --model inkling-mini
-npm run test:mac
+brew tap giosch/igor https://github.com/giosch/igor.git
+brew install giosch/igor/igor
+igor doctor --model mock
 ```
 
-The hardware acceptance run exercises the native sandbox, a real coding task, independent patch verification, MTP activation, and a measured context load at 32k. Add `-- --64k` to repeat the 32k checks and then exercise the larger budget.
+For real coding jobs, install Pi 1.6.0 and oMLX, then download the pinned Inkling checkpoint. The [Mac setup and acceptance guide](docs/macos-setup.md) includes the commands, a 32k hardware test, and an optional 64k test. Examples, tests, and the Claude Code skill are included under `$(brew --prefix giosch/igor/igor)/libexec`.
 
 ## Try a job on Windows or macOS
 

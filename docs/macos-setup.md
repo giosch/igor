@@ -2,12 +2,23 @@
 
 Use a native arm64 terminal on the Mac. The target is an M5 Pro with 48 GB of unified memory. The pinned checkpoint contains about 16.9 GB of model data. Allow additional disk space for partial downloads, job copies and runtime caches. The 32k and 64k memory measurements come from the acceptance run on your own machine.
 
-## Install
+## Install Igor with Homebrew
 
-With Homebrew available, install Node 24, Pi 1.6.0, and the command-line build of oMLX. Igor owns its foreground `omlx serve` child. The Homebrew service is separate. [oMLX installation](https://github.com/jundot/omlx#install)
+If the `brew` command is new to this machine, install [Homebrew](https://brew.sh/) first and follow its printed shell setup instructions. Run these commands once to register Igor's tap, install the CLI with Node 24 and Git, and check the offline mock backend.
 
 ```sh
-brew install node@24 git
+brew tap giosch/igor https://github.com/giosch/igor.git
+brew install giosch/igor/igor
+igor doctor --model mock
+```
+
+Check for updates with `brew update` followed by `brew upgrade giosch/igor/igor`.
+
+## Enable real coding jobs
+
+Install the pinned Pi harness and the command-line build of oMLX. Igor starts its own foreground `omlx serve` child when a job needs it. [oMLX installation](https://github.com/jundot/omlx#install)
+
+```sh
 export PATH="$(brew --prefix node@24)/bin:$PATH"
 npm install -g @earendil-works/pi-coding-agent@1.6.0
 brew tap jundot/omlx https://github.com/jundot/omlx
@@ -17,17 +28,16 @@ pi --version
 omlx --version
 ```
 
-Run the following from the repository root. If you transferred the npm archive, unpack it with `tar -xzf igor-delegate-0.1.0.tgz` and `cd package` first. The release contains runnable ESM.
+The Homebrew installation includes the examples and acceptance suite. Download the weights and run the tests from the installed directory.
 
 ```sh
-npm install
-npm link
-igor doctor --model mock
-npm test
+cd "$(brew --prefix giosch/igor/igor)/libexec"
 igor model download inkling-mini
 igor doctor --model inkling-mini
 npm run test:mac
 ```
+
+For a source checkout or the unpacked npm release, run `npm install` and `npm link` from its root and use that directory in place of Homebrew's `libexec`.
 
 `test:mac` creates a disposable project and saves a report and reviewed patch under `~/Library/Application Support/igor/acceptance/`. It checks, in order,
 
