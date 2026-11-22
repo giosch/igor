@@ -7,11 +7,27 @@ import { createHash } from 'node:crypto';
 import { initialize } from '../../src/config/index.js';
 import { selectFiles, fetchFile, download, verify } from '../../src/models/download.js';
 import { RuntimeManager } from '../../src/inference/backends.js';
-import { gateway } from '../../src/inference/gateway.js';
+import { chatRequest, gateway } from '../../src/inference/gateway.js';
 import { budget } from '../../src/models/registry.js';
 import registry from '../../examples/models.json' with { type: 'json' };
 import { temp } from '../helpers.js';
 
+test('reasoning effort is opt-in and only the host can choose it', () => {
+  const model = registry.models['inkling-mini'];
+  const limits = budget(model);
+  const body = {
+    model: model.options.modelId,
+    messages: [{ role: 'user', content: 'test' }],
+    reasoning_effort: 'high',
+    chat_template_kwargs: { reasoning_effort: 'high' },
+  };
+  const baseline = chatRequest(body, model, limits);
+  assert.equal(baseline.reasoning_effort, undefined);
+  assert.equal(baseline.chat_template_kwargs, undefined);
+  for (const effort of ['none', 'low']) {
+    assert.deepEqual(chatRequest(body, model, limits, effort), { ...baseline, reasoning_effort: effort });
+  }
+});
 test('gateway authenticates, restricts routes and models, strips unsafe upstream options, streams bytes', async t => {
   const m = registry.models.mock,
     seen = [];

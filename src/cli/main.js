@@ -181,6 +181,7 @@ export async function main({ cmd, values: v, positionals: pos }) {
             modelId,
             model,
             context: Number(v.context ?? model.context.default),
+            reasoningEffort: v['reasoning-effort'] === 'default' ? undefined : v['reasoning-effort'],
             timeoutMs: Number(v['timeout-ms'] ?? ctx.config.timeoutMs),
             mockMode: v['mock-mode'] ?? 'success',
             mockDelayMs: Number(v['mock-delay-ms'] ?? 0),

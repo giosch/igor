@@ -16,6 +16,7 @@ const specs = {
     'docs',
     'model',
     'context',
+    'reasoning-effort',
     'timeout-ms',
     'background',
     'follow',
@@ -83,6 +84,11 @@ export function parse(argv) {
       'run requires --code and exactly one of --prompt or --prompt-file'
     );
     check(!(values.follow && values.background), 'Use --follow or --background');
+    if (values['reasoning-effort'] !== undefined)
+      check(
+        ['default', 'none', 'low'].includes(values['reasoning-effort']),
+        'Expected reasoning effort default, none, or low'
+      );
   }
   if (cmd === 'export') check(values.output, 'export requires --output');
   if (cmd === 'verify')
@@ -99,6 +105,7 @@ export const help = `Igor ${version} · local coding delegation
   igor stop                           Stop services owned by Igor
   igor run --code DIR (--prompt TEXT | --prompt-file FILE)
            [--docs DIR] [--model ID] [--context TOKENS] [--timeout-ms MS] [--background | --follow]
+           [--reasoning-effort default|none|low] (managed oMLX)
   igor list [--status STATE]           List jobs in submission order
   igor status [JOB_ID]                 Show service or job status
   igor logs JOB_ID [--follow]          Read structured job events

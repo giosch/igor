@@ -22,6 +22,11 @@ export function resultRecord({
     agent: spec?.model ? (spec.model.runtime === 'mock' ? 'mock' : 'pi') : null,
     agentCompleted: Boolean(agent),
     agentOutcome: agent?.reported ?? 'unknown',
+    ...(agent?.completionReason && {
+      completionReason: agent.completionReason,
+      finalStopReason: agent.finalStopReason,
+      agentReply: agent.agentReply,
+    }),
     summary: agent?.summary ?? outcome.error,
     verification: {
       status: commands.length ? 'tool_results' : 'unverified',

@@ -1,6 +1,6 @@
 # Review the result
 
-Use `status` and `exitCode` for supervisor outcomes. Use `agentCompleted` and `agentOutcome` for the harness and self-reported success. An exit code of 1 with `status` equal to `completed` can represent a task the agent reported as failed.
+Use `status` and `exitCode` for supervisor outcomes. Use `agentCompleted` and `agentOutcome` for the harness and self-reported success. On Igor v0.1.5 or later, an exit code of 1 with `status` equal to `completed` can represent a reported failure, an exhausted output budget, or a missing final outcome report. Read `completionReason` and `finalStopReason` when present.
 
 `igor review JOB_ID --json` returns `result`, `diff` and `verification`. The summary's `agent.commands` contains observed Pi shell tool results. `independent` is the latest check for this patch, or `null`. `independentlyVerified` is true when that check passed. Use the check command, exit status, and output to assess the acceptance criteria.
 

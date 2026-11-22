@@ -4,7 +4,7 @@ import { pipeline } from 'node:stream/promises';
 import { randomBytes } from 'node:crypto';
 import { check } from '../core.js';
 
-export function chatRequest(body, model, limits) {
+export function chatRequest(body, model, limits, reasoningEffort) {
   check(
     body && body.model === model.options.modelId && Array.isArray(body.messages) && body.messages.length,
     'Unexpected model or messages'
@@ -47,6 +47,7 @@ export function chatRequest(body, model, limits) {
     stream: body.stream === true,
     temperature: model.generation.temperature,
     max_tokens: Math.min(output, limits.output),
+    ...(reasoningEffort !== undefined && { reasoning_effort: reasoningEffort }),
   };
   if (request.stream && body.stream_options?.include_usage) request.stream_options = { include_usage: true };
   if (body.tools) {
@@ -68,7 +69,7 @@ export function chatRequest(body, model, limits) {
   }
   return request;
 }
-export async function gateway(backend, model, limits) {
+export async function gateway(backend, model, limits, reasoningEffort) {
   const token = randomBytes(32).toString('hex');
   const server = http.createServer({ maxHeaderSize: 8192 }, async (req, res) => {
     const reply = (code, message) => {
@@ -91,7 +92,7 @@ export async function gateway(backend, model, limits) {
         if (size > 4 * 1024 ** 2) return reply(413, { error: 'Request too large' });
         chunks.push(data);
       }
-      const body = chatRequest(JSON.parse(Buffer.concat(chunks).toString()), model, limits);
+      const body = chatRequest(JSON.parse(Buffer.concat(chunks).toString()), model, limits, reasoningEffort);
       forwarding = true;
       const upstream = await fetch(backend.endpoint + '/chat/completions', {
         method: 'POST',

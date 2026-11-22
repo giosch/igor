@@ -31,6 +31,9 @@
     "agent": { "enum": ["pi", "mock", null] },
     "agentCompleted": { "type": "boolean" },
     "agentOutcome": { "enum": ["success", "failed", "unknown"] },
+    "completionReason": { "enum": ["reported_success", "reported_failure", "output_limit", "unconfirmed_report"] },
+    "finalStopReason": { "type": ["string", "null"] },
+    "agentReply": { "type": "string", "maxLength": 64000 },
     "summary": { "type": "string" },
     "verification": {
       "type": "object",

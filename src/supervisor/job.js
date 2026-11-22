@@ -28,6 +28,11 @@ export async function validateSpec(spec, home) {
     spec.model.runtime === 'mock' || (spec.mockMode === 'success' && spec.mockDelayMs === 0),
     'Mock options require a mock model'
   );
+  if (spec.reasoningEffort !== undefined)
+    check(
+      spec.model.runtime === 'omlx' && ['none', 'low'].includes(spec.reasoningEffort),
+      'Reasoning effort overrides require managed oMLX and accept none or low'
+    );
   return spec;
 }
 export async function prepareJobDirs(p) {
@@ -92,7 +97,7 @@ export async function executeJob(ctx, store, row, runtimes, isStopping) {
     if (spec.model.runtime !== 'mock') {
       runtime = await findPi(ctx.config);
       version = runtime.version;
-      gate = await gateway(backend, spec.model, limits);
+      gate = await gateway(backend, spec.model, limits, spec.reasoningEffort);
       sandbox = await prepareSeatbelt(p, runtime, gate, signal);
     }
     signal.throwIfAborted();
@@ -119,7 +124,13 @@ export async function executeJob(ctx, store, row, runtimes, isStopping) {
     patchComplete = true;
     monitor();
     signal.throwIfAborted();
-    result = outcome('completed', agentResult.reported === 'failed' ? 1 : 0, null);
+    const reportError =
+      agentResult.completionReason === 'output_limit'
+        ? agentResult.summary
+        : agentResult.completionReason === 'unconfirmed_report'
+          ? 'Pi did not provide a valid final outcome report.'
+          : null;
+    result = outcome('completed', agentResult.reported === 'success' ? 0 : 1, reportError);
   } catch (error) {
     observations = error.observations;
     const err = signal.aborted ? signal.reason : error,
@@ -158,6 +169,7 @@ export async function executeJob(ctx, store, row, runtimes, isStopping) {
       piVersion: version ?? null,
       backendVersion: backend?.version ?? null,
       modelRevision: backend?.revision ?? null,
+      ...(spec?.model.runtime === 'omlx' && { reasoningEffort: spec.reasoningEffort ?? 'default' }),
     },
     resources: { ...resources, tokenUsage: agentResult?.usage ?? observations?.usage ?? null },
   });

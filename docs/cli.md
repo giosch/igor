@@ -42,12 +42,13 @@ The package includes the [versioned result JSON Schema](result.schema.json).
 | --- | --- |
 | `jobId`, `model`, `agent`, `status`, `exitCode`, `error` | Job identity and infrastructure outcome |
 | `agentCompleted`, `agentOutcome`, `summary` | Whether the harness finished and the agent's reported `success`, `failed` or `unknown` outcome |
+| `completionReason`, `finalStopReason`, `agentReply` | For settled Pi jobs, the interpreted completion reason, Pi's last stop reason and the last 64,000 characters of its final visible reply |
 | `verification.commands` | Observed Pi shell commands, tool success and exit code when available. A successful Bash tool call indicates exit zero. An error without a numeric code uses `null`. |
 | `verification.status`, `independentlyVerified` | `tool_results` means shell results were observed. `unverified` means none were recorded. Independent verification belongs to the reviewer. |
 | `baseRevision`, `filesChanged`, `artifacts` | Source revision, modified paths, patch and manifest names, and whether collection finished |
 | `durationMs`, `runtime`, `resources` | Context reservations, available version/revision evidence, reported token counts and host measurements |
 
-A completed job with `agentOutcome: "failed"` returns exit 1. A runtime error uses `status: "failed"` and records diagnostics. Pi can produce a free-form answer with `agentOutcome: "unknown"`. Inspect the patch and run independent checks even when the agent reports success. A failed job can have a usable partial patch. `patchComplete` describes artifact collection.
+A completed job returns exit 0 when Pi provides a valid success report and finishes within the output budget. A reported failure, missing final report, or final stop at the output limit returns exit 1. A runtime error uses `status: "failed"` and records diagnostics. A failed job can have a usable patch. `patchComplete` describes artifact collection. Inspect the patch and use independent checks when deciding whether it meets the task.
 
 | Exit | Meaning |
 | --- | --- |

@@ -1,6 +1,6 @@
 {
   "name": "igor-delegate",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "A local, supervised coding worker for Apple Silicon",
   "type": "module",
   "private": true,

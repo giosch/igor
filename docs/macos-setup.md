@@ -56,6 +56,21 @@ After the 32k run succeeds, use `npm run test:mac -- --64k` to exercise 65,536. 
 
 ## First real job
 
+### Compare Inkling reasoning settings
+
+Use Igor 0.1.5 or later. After active jobs finish, run `igor stop` so the next job uses the upgraded supervisor. Supply the original project, prompt file, and an independent check that fails on the original fixture:
+
+```sh
+export PATH="$(brew --prefix node@24)/bin:$PATH"
+node "$(brew --prefix giosch/igor/igor)/libexec/scripts/benchmark-inkling.js" \
+  --code /path/to/original-project --prompt-file /path/to/original-task.md \
+  --check 'node --test'
+```
+
+Add `--docs DIR` and `--context TOKENS` if the original run used them. The script runs one job each for `default`, `none`, and `low` using the same managed oMLX runtime and output budget. It checks snapshot digests and writes a report with job IDs, timings, token counts, changed files, and independent verification results. Each trial's review JSON includes its diff. `patchPass` requires both a changed file and a passing check. Because the first trial can load the model and later trials can benefit from cache state, treat the three timings as a smoke comparison.
+
+### Run a coding task
+
 ```sh
 igor start --model inkling-mini
 igor run --code ./examples/sample-project --prompt-file ./examples/task.md --json

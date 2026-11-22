@@ -117,17 +117,53 @@ function messageText(message) {
       .trim() || ''
   );
 }
-function report(message) {
-  const text = messageText(message);
-  const raw = text.replace(/^```(?:json)?\s*|\s*```$/g, '');
+function reportedOutcome(raw) {
   try {
     const body = JSON.parse(raw);
-    if (['success', 'failed'].includes(body.outcome) && typeof body.summary === 'string')
+    if (
+      ['success', 'failed'].includes(body?.outcome) &&
+      typeof body.summary === 'string' &&
+      body.summary.trim()
+    )
       return { reported: body.outcome, summary: body.summary.slice(0, 16000) };
   } catch {
-    /* Free-form assistant responses are retained as unclassified reports. */
+    // A report candidate may contain prose or an incomplete JSON object.
   }
-  return { reported: 'unknown', summary: text.slice(0, 16000) || 'Pi returned no textual summary.' };
+  return null;
+}
+function report(message) {
+  const text = messageText(message);
+  const evidence = { finalStopReason: message.stopReason ?? null, agentReply: text.slice(-64000) };
+  if (message.stopReason === 'length') {
+    return {
+      ...evidence,
+      reported: 'unknown',
+      completionReason: 'output_limit',
+      summary: 'Pi reached the output token limit before finishing the task.',
+    };
+  }
+  const fence = [...text.matchAll(/^[ \t]*```([^\r\n]*)\r?\n([\s\S]*?)^[ \t]*```[ \t]*$/gm)].at(-1);
+  const trailing = text.lastIndexOf('\n{');
+  let parsed = reportedOutcome(text);
+  if (!parsed && fence && fence.index + fence[0].length === text.length) {
+    if (['', 'json'].includes(fence[1].trim().toLowerCase())) parsed = reportedOutcome(fence[2]);
+  } else if (!parsed && trailing >= 0) {
+    parsed = reportedOutcome(text.slice(trailing + 1));
+  }
+  if (!parsed && /^```(?:json)?[ \t]+\{[^\r\n]*\}[ \t]*```$/i.test(text))
+    parsed = reportedOutcome(text.replace(/^```(?:json)?[ \t]+|[ \t]*```$/gi, ''));
+  if (parsed)
+    return {
+      ...evidence,
+      ...parsed,
+      completionReason: 'reported_' + (parsed.reported === 'success' ? 'success' : 'failure'),
+    };
+  return {
+    ...evidence,
+    reported: 'unknown',
+    completionReason: 'unconfirmed_report',
+    summary: text.slice(0, 16000) || 'Pi returned no textual summary.',
+  };
 }
 async function* records(stream) {
   stream.setEncoding('utf8');
